@@ -1,0 +1,77 @@
+/*
+ * DESIGN TOKENS: the single source of truth for colour, spacing and layout numbers.
+ * Components must use these variables and never hard-code a hex value.
+ * To re-theme the whole app, change this file only.
+ */
+:root {
+    /* ---- Liquid glass surfaces ---- */
+  --glass-fill: rgba(148, 163, 184, 0.14);
+  --glass-border: rgba(248, 250, 252, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-shadow: rgba(2, 6, 23, 0.55);
+  /* ---- Liquid glass surfaces ---- */
+--glass-fill: rgba(96, 165, 250, 0.10);
+--glass-border: rgba(148, 197, 253, 0.22);
+--glass-highlight: rgba(255, 255, 255, 0.28);
+--glass-shadow: rgba(2, 6, 23, 0.55);
+  /* ---- Brand palette ---- */
+  --bg: #0b1120;
+  --surface: #1e293b;
+  --primary: #3b82f6;
+  --primary-soft: #60a5fa;
+  --verified: #2dd4bf;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  /* Semantic only: "N rooms left". Not a decorative colour. */
+  --urgent: #fb7185;
+  /* White on --primary fails WCAG AA, so text on primary buttons uses the dark background colour. */
+  --on-primary: #0b1120;
+
+  /* ---- Derived tints (built from the palette above) ---- */
+  --bg-glass: rgba(11, 17, 32, 0.88);
+  --bg-inset: rgba(11, 17, 32, 0.55);
+  --overlay: rgba(3, 7, 18, 0.62);
+  --photo-chip: rgba(11, 17, 32, 0.72);
+  --photo-shade: rgba(11, 17, 32, 0.78);
+  --border-soft: rgba(51, 65, 85, 0.7);
+  --primary-tint: rgba(59, 130, 246, 0.16);
+  --soft-tint: rgba(96, 165, 250, 0.12);
+  --soft-line: rgba(96, 165, 250, 0.32);
+  --verified-line: rgba(45, 212, 191, 0.38);
+  --urgent-tint: rgba(251, 113, 133, 0.12);
+  --urgent-line: rgba(251, 113, 133, 0.36);
+  --muted-tint: rgba(148, 163, 184, 0.1);
+  --muted-line: rgba(148, 163, 184, 0.2);
+  --tag-text: #cbd5e1;
+  --toast-bg: #e2e8f0;
+
+  /* ---- Type: the system font stack is what makes it feel native, and loads instantly ---- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* ---- Layout numbers ---- */
+  --tabs-h: 50px;
+  --nav-h: 60px; /* bottom navigation, without the safe-area inset */
+  --rail-w: 88px; /* left icon rail on wide screens */
+  --gutter: 8px; /* page side padding: grows with the screen, see below */
+  --content-max: 1320px;
+  --radius-card: 22px;
+  --radius-control: 14px;
+
+  /* ---- Stacking ---- */
+  --z-tabs: 20;
+  --z-nav: 30;
+  --z-toast: 60;
+}
+
+
+/* Side padding grows with the screen: 320px phones 8px, phones 12px, iPad 22px, desktop 28px. */
+@media (min-width: 360px) {
+  :root { --gutter: 12px; }
+}
+@media (min-width: 600px) {
+  :root { --gutter: 22px; }
+}
+@media (min-width: 1024px) {
+  :root { --gutter: 28px; }
+}   
