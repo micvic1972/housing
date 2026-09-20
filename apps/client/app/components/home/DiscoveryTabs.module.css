@@ -24,15 +24,11 @@
   padding: 6px;
   border-radius: 999px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   min-width: 0;
-  background: var(--glass-fill);
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--glass-highlight),
-    0 14px 30px -12px var(--glass-shadow);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 .pill::-webkit-scrollbar {
   display: none;
@@ -47,17 +43,16 @@
   font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
-  color: var(--tag-text);
+  color: var(--text);
   background-color: transparent;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 .tab[aria-selected="true"] {
   background-color: var(--primary);
   color: var(--on-primary);
 }
 .tab:active {
-  transform: scale(0.96);
-  transition: transform 0.12s ease;
+  transform: scale(0.95);
 }
 
 .searchBtn {
@@ -68,14 +63,9 @@
   place-items: center;
   border-radius: 50%;
   color: var(--text);
-  background: var(--glass-fill);
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    inset 0 1px 0 var(--glass-highlight),
-    0 10px 22px -10px var(--glass-shadow);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
-  transition: transform 0.12s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 0.1s ease;
 }
 .searchBtn:active {
   transform: scale(0.94);

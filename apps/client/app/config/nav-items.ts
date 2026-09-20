@@ -6,8 +6,6 @@ export interface NavItem {
   href: string;
 }
 
-// Single source of truth for BottomNav and SideRail.
-// Change the tab set here only — both navs update together.
 export const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Home", href: "/" },
   { id: "map", label: "Map", href: "/map" },
