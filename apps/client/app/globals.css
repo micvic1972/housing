@@ -52,6 +52,8 @@
   --z-tabs: 20;
   --z-nav: 30;
   --z-toast: 60;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 }
 
 /* Side padding grows with the screen: 320px phones 8px, phones 12px, iPad 22px, desktop 28px. */

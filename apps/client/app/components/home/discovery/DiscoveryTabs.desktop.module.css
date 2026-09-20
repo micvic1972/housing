@@ -1,0 +1,14 @@
+@media (min-width: 1024px) {
+  .row {
+    max-width: var(--content-max);
+  }
+  .tab {
+    height: 42px;
+    font-size: 15px;
+    padding: 0 20px;
+  }
+  .searchBtn {
+    width: 46px;
+    height: 46px;
+  }
+}

@@ -57,7 +57,10 @@
   --z-tabs: 20;
   --z-nav: 30;
   --z-toast: 60;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --app-max: 1680px; /* hard cap so the whole app frame never over-stretches on ultra-wide monitors */
 }
+
 
 
 /* Side padding grows with the screen: 320px phones 8px, phones 12px, iPad 22px, desktop 28px. */

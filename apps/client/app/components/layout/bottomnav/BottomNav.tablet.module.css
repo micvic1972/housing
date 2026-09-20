@@ -1,0 +1,9 @@
+@media (min-width: 600px) {
+  .item {
+    min-width: 68px;
+    padding: 10px 6px;
+  }
+  .label {
+    font-size: 11.5px;
+  }
+}

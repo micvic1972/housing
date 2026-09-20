@@ -1,0 +1,12 @@
+@media (min-width: 1440px) {
+  .rail {
+    padding: 14px;
+    gap: 6px;
+  }
+  .item {
+    padding: 12px 6px;
+  }
+  .label {
+    font-size: 11.5px;
+  }
+}

@@ -1,0 +1,3 @@
+/* Tablet-only shell overrides. Empty for now — tablet uses the exact
+   same bottom-nav layout as phone. Add tablet-only shell rules here
+   later without ever touching the base or desktop file. */

@@ -1,6 +1,6 @@
 "use client";
 
-import DiscoveryTabs from "./components/home/DiscoveryTabs";
+import DiscoveryTabs from "./components/home/discovery/DiscoveryTabs";
 
 const SWATCHES = ["--bg", "--surface", "--primary", "--primary-soft", "--verified", "--border", "--urgent"];
 

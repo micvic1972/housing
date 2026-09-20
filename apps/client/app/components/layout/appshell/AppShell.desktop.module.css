@@ -1,0 +1,28 @@
+@media (min-width: 1024px) {
+  .shell {
+    flex-direction: row;
+    max-width: var(--app-max);
+    margin: 0 auto;
+  }
+
+  .railSlot {
+    display: flex;
+    flex: none;
+    width: var(--rail-w);
+    height: 100dvh;
+    position: sticky;
+    top: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 12px;
+    text-decoration: none;
+  }
+
+  .navSlot {
+    display: none;
+  }
+
+  .content {
+    padding-bottom: 24px;
+  }
+}

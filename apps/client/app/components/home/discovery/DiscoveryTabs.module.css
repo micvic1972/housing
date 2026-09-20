@@ -30,6 +30,9 @@
   min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
+  scroll-behavior: auto; /* the JS animation drives this now, not native smooth-scroll */
+  /* ...keep every other line in .pill exactly as it already is... */
+
 }
 .pill::-webkit-scrollbar {
   display: none;
@@ -56,6 +59,7 @@
 .tab:active {
   transform: scale(0.95);
 }
+
 .searchBtn {
   flex: none;
   width: 44px;
