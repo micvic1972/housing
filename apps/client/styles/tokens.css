@@ -4,16 +4,11 @@
  * To re-theme the whole app, change this file only.
  */
 :root {
-    /* ---- Liquid glass surfaces ---- */
-  --glass-fill: rgba(148, 163, 184, 0.14);
-  --glass-border: rgba(248, 250, 252, 0.14);
-  --glass-highlight: rgba(255, 255, 255, 0.22);
-  --glass-shadow: rgba(2, 6, 23, 0.55);
-  /* ---- Liquid glass surfaces ---- */
---glass-fill: rgba(96, 165, 250, 0.10);
---glass-border: rgba(148, 197, 253, 0.22);
---glass-highlight: rgba(255, 255, 255, 0.28);
---glass-shadow: rgba(2, 6, 23, 0.55);
+ /* ---- Liquid glass surfaces ---- */
+--glass-fill: rgba(96, 165, 250, 0.16);
+--glass-border: rgba(148, 197, 253, 0.34);
+--glass-highlight: rgba(255, 255, 255, 0.3);
+--glass-shadow: rgba(2, 6, 23, 0.6);
   /* ---- Brand palette ---- */
   --bg: #0b1120;
   --surface: #1e293b;
