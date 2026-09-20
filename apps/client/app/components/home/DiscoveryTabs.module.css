@@ -25,6 +25,7 @@
   border-radius: 999px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   scrollbar-width: none;
   min-width: 0;
   background: var(--surface);
@@ -45,6 +46,7 @@
   white-space: nowrap;
   color: var(--text);
   background-color: transparent;
+  touch-action: manipulation;
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 .tab[aria-selected="true"] {
@@ -54,7 +56,6 @@
 .tab:active {
   transform: scale(0.95);
 }
-
 .searchBtn {
   flex: none;
   width: 44px;
@@ -63,8 +64,9 @@
   place-items: center;
   border-radius: 50%;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--primary-tint);
+  border: 1px solid var(--soft-line);
+  touch-action: manipulation;
   transition: transform 0.1s ease;
 }
 .searchBtn:active {

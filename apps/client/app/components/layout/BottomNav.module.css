@@ -1,5 +1,7 @@
 .bar {
   position: relative;
+  pointer-events: auto; /* the missing piece — .navSlot around it is intentionally pointer-events: none */
+  touch-action: manipulation;
   display: flex;
   align-items: center;
   gap: 2px;
