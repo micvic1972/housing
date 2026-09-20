@@ -1,0 +1,211 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.card:active {
+  transform: scale(0.99);
+}
+
+.media {
+  position: relative;
+  aspect-ratio: 4 / 2.9;
+}
+
+.badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--photo-chip);
+  color: var(--verified);
+  font-size: 12px;
+  font-weight: 700;
+}
+.badgeOff {
+  color: var(--urgent);
+}
+
+.heart {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--photo-chip);
+  color: #fff;
+}
+.heart:active {
+  transform: scale(0.9);
+}
+.heartOn {
+  color: var(--urgent);
+}
+
+.walk {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--photo-chip);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.name {
+  font-size: 16.5px;
+  font-weight: 750;
+  color: var(--text);
+}
+.rating {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.loc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.price {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+}
+.price small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--verified-line);
+  color: var(--verified);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pillWarn {
+  background: var(--urgent-tint);
+  color: var(--urgent);
+}
+.pillOff {
+  background: var(--muted-tint);
+  color: var(--text-muted);
+}
+
+.progressWrap {
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+}
+.progressLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.progressLabel span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.progressLabel b {
+  color: var(--text);
+  font-size: 14px;
+}
+.progressTrack {
+  height: 6px;
+  border-radius: 6px;
+  background: var(--muted-line);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--primary-soft), var(--primary));
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--muted-tint);
+  border: 1px solid var(--muted-line);
+  font-size: 12.5px;
+  color: var(--tag-text);
+}
+
+.verifiedLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--verified);
+}
+.insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--primary-soft);
+}
