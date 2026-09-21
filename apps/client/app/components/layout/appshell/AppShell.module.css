@@ -2,8 +2,7 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  /* Never add overflow here. This div must never become its own
-     scroll container, or every sticky/fixed child inside it breaks. */
+  width: 100%;
 }
 
 .content {
@@ -32,4 +31,36 @@
 
 .railSlot {
   display: none;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    flex-direction: row;
+    width: 100%;
+    max-width: var(--content-max, 1320px);
+    margin: 0 auto;
+  }
+
+  .railSlot {
+    display: flex;
+    flex: none;
+    width: var(--rail-w);
+    height: 100dvh;
+    position: sticky;
+    top: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 12px;
+    text-decoration: none;
+  }
+
+  .navSlot {
+    display: none;
+  }
+
+  .content {
+    padding-bottom: 24px;
+    width: 100%;
+    flex: 1;
+  }
 }

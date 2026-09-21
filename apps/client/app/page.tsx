@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
+//  Fixed absolute paths to match your relative file paths:
 import DiscoveryTabs from "./components/home/discovery/DiscoveryTabs";
+import ListingCard from "./components/home/listingcard/ListingCard";
 import BottomSheet from "./components/ui/bottomsheet/BottomSheet";
-import FeedGrid from "./components/home/feed/FeedGrid";
+//  Fixed path name from plural 'mock-listings' to your file 'mock-listing':
 import { MOCK_LISTINGS } from "./data/mock-listing";
 
 export default function Page() {
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   
+  // Scans the active listing array matching our open card index state
   const listing = MOCK_LISTINGS.find((item) => item.id === openId) ?? null;
 
   function toggleSave(id: string) {
@@ -28,13 +31,16 @@ export default function Page() {
     <>
       <DiscoveryTabs onSearchPress={() => alert("Filters sheet comes later")} />
       
-      <main style={{ padding: "0 var(--gutter)" }}>
-        <FeedGrid 
-          listings={MOCK_LISTINGS} 
-          saved={saved} 
-          onToggleSave={toggleSave} 
-          onOpen={setOpenId} 
-        />
+      <main style={{ padding: "8px var(--gutter) 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+        {MOCK_LISTINGS.map((item) => (
+          <ListingCard 
+            key={item.id} 
+            listing={item} 
+            saved={saved.has(item.id)} 
+            onToggleSave={toggleSave} 
+            onOpen={setOpenId} 
+          />
+        ))}
       </main>
 
       <BottomSheet

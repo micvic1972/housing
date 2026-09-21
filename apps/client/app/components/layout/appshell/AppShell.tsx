@@ -5,11 +5,12 @@ import desktop from "./AppShell.desktop.module.css";
 import BottomNav from "../bottomnav/BottomNav";
 import SideRail from "../siderail/SideRail";
 
+// Added clean space separators between every single fallback dynamic class variable:
 const cls = {
-  shell: `${base.shell} ${tablet.shell ?? ""} ${desktop.shell}`,
-  content: `${base.content} ${desktop.content}`,
-  navSlot: `${base.navSlot} ${desktop.navSlot}`,
-  railSlot: `${base.railSlot} ${desktop.railSlot}`,
+  shell: `${base.shell} ${tablet.shell ?? ""} ${desktop.shell ?? ""}`,
+  content: `${base.content} ${desktop.content ?? ""}`,
+  navSlot: `${base.navSlot} ${desktop.navSlot ?? ""}`,
+  railSlot: `${base.railSlot} ${desktop.railSlot ?? ""}`,
 };
 
 export default function AppShell({ children }: { children: ReactNode }) {

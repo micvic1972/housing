@@ -1,0 +1,65 @@
+/*
+ * Colours use your design tokens (var(--surface) ...) and fall back to the exact palette hex,
+ * so this file works even before tokens.css is wired in.
+ */
+.bar {
+  --_surface: var(--surface, #1e293b);
+  --_border: var(--border, #334155);
+  --_text: var(--text, #f8fafc);
+  --_soft: var(--primary-soft, #60a5fa);
+  --_primary: var(--primary, #3b82f6);
+  --_tint: var(--primary-tint, rgba(59, 130, 246, 0.16));
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 12px var(--gutter, 12px) 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* swipe works, the scrollbar does not show */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.bar::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 38px; /* comfortable thumb target */
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--_surface);
+  border: 1px solid var(--_border);
+  color: var(--_text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.12s, background 0.15s, border-color 0.15s;
+}
+.chip:active {
+  transform: scale(0.97);
+}
+.chip:focus-visible {
+  outline: 2px solid var(--_soft);
+  outline-offset: 2px;
+}
+
+/* a filter is on */
+.active {
+  background: var(--_tint);
+  border-color: var(--_primary);
+  color: var(--_soft);
+}
+
+/* the fixed UNIDEL chip */
+.fixed {
+  color: var(--_soft);
+}

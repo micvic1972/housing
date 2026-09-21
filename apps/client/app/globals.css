@@ -1,10 +1,4 @@
-/*
- * DESIGN TOKENS: the single source of truth for colour, spacing and layout numbers.
- * Components must use these variables and never hard-code a hex value.
- * To re-theme the whole app, change this file only.
- */
 :root {
-  /* ---- Brand palette ---- */
   --bg: #0b1120;
   --surface: #1e293b;
   --primary: #3b82f6;
@@ -13,12 +7,9 @@
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --border: #334155;
-  /* Semantic only: "N rooms left". Not a decorative colour. */
   --urgent: #fb7185;
-  /* White on --primary fails WCAG AA, so text on primary buttons uses the dark background colour. */
   --on-primary: #0b1120;
 
-  /* ---- Derived tints (built from the palette above) ---- */
   --bg-glass: rgba(11, 17, 32, 0.88);
   --bg-inset: rgba(11, 17, 32, 0.55);
   --overlay: rgba(3, 7, 18, 0.62);
@@ -36,36 +27,80 @@
   --tag-text: #cbd5e1;
   --toast-bg: #e2e8f0;
 
-  /* ---- Type: the system font stack is what makes it feel native, and loads instantly ---- */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* ---- Layout numbers ---- */
   --tabs-h: 50px;
-  --nav-h: 60px; /* bottom navigation, without the safe-area inset */
-  --rail-w: 88px; /* left icon rail on wide screens */
-  --gutter: 8px; /* page side padding: grows with the screen, see below */
+  --nav-h: 60px;
+  --rail-w: 88px;
+  --gutter: 8px;
   --content-max: 1320px;
   --radius-card: 22px;
   --radius-control: 14px;
 
-  /* ---- Stacking ---- */
   --z-tabs: 20;
   --z-nav: 30;
   --z-toast: 60;
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
 }
 
-/* Side padding grows with the screen: 320px phones 8px, phones 12px, iPad 22px, desktop 28px. */
+html, body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  background: var(--bg, #0b1120);
+  color: var(--text, #f8fafc);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- Added Layout Alignment Utilities --- */
+.container {
+  width: 100%;
+  max-width: var(--content-max, 1320px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.center-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 @media (min-width: 360px) {
   :root { --gutter: 12px; }
 }
+
 @media (min-width: 600px) {
   :root { --gutter: 22px; }
 }
+
 @media (min-width: 1024px) {
   :root { --gutter: 28px; }
-}
-html {
-  overflow-x: clip;
 }

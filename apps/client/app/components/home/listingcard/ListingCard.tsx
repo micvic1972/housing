@@ -3,6 +3,8 @@
 import { Heart, Star, MapPin, Footprints, Shield, Sparkles, Clock, HardHat, Check, X as XIcon } from "lucide-react";
 import type { Listing } from "../../../types/listing";
 import { FACILITIES } from "../../../config/facilities";
+import { placeholderScene } from "../../../lib/placeholderscene";
+
 import styles from "./ListingCard.module.css";
 
 interface ListingCardProps {
@@ -11,8 +13,6 @@ interface ListingCardProps {
   onToggleSave: (id: string) => void;
   onOpen: (id: string) => void;
 }
-
-const HUES = [212, 204, 220, 198, 226, 208, 216, 200, 214];
 
 function naira(n: number) {
   return `₦${n.toLocaleString("en-NG")}`;
@@ -34,14 +34,16 @@ function StatusPill({ listing }: { listing: Listing }) {
 }
 
 export default function ListingCard({ listing, saved, onToggleSave, onOpen }: ListingCardProps) {
-  const hue = HUES[listing.seed % HUES.length];
-
   return (
     <article className={styles.card} onClick={() => onOpen(listing.id)}>
-      <div
-        className={styles.media}
-        style={{ background: `linear-gradient(160deg, hsl(${hue} 55% 18%), hsl(${hue} 58% 33%))` }}
-      >
+      <div className={styles.media}>
+        <img
+          src={placeholderScene(listing.seed, 0, listing.kind === "construction")}
+          alt={`Illustration of ${listing.name}`}
+          className={styles.photo}
+          draggable={false}
+        />
+
         {listing.kind === "rented" ? (
           <span className={`${styles.badge} ${styles.badgeOff}`}><XIcon size={13} /> Rented</span>
         ) : listing.verified ? (
