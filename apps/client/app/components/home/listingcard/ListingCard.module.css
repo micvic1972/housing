@@ -3,10 +3,17 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   overflow: hidden;
+  
+  /* 🛠️ Forces card to center itself and never squeeze out of small screens */
+  width: 100%;
+  max-width: 540px; 
+  margin: 0 auto;
 }
 .card:active {
   transform: scale(0.99);
 }
+
+/* ... leave everything below this exactly as it was ... */
 
 .media {
   position: relative;

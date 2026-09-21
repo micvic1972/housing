@@ -3,7 +3,6 @@
 import type { Listing } from "../../../types/listing";
 import ListingCard from "../listingcard/ListingCard";
 import styles from "./FeedGrid.module.css";
-import { Users } from "lucide-react";
 
 interface FeedGridProps {
   listings: Listing[];
@@ -14,7 +13,19 @@ interface FeedGridProps {
 
 export default function FeedGrid({ listings, saved, onToggleSave, onOpen }: FeedGridProps) {
   return (
-    <div className={styles.grid}>
+    /* Enforces centered alignment rules at the grid root container scale */
+    <div 
+      className={styles.grid} 
+      style={{ 
+        width: "100%", 
+        maxWidth: "600px", 
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+        alignItems: "center"
+      }}
+    >
       {listings.map((listing) => (
         <ListingCard
           key={listing.id}
