@@ -1,10 +1,54 @@
+.shell {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+.navSlot {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 14px);
+  padding: 0 var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--z-nav);
+
+  /* Smooth transition animations for sliding out of view frame boundaries cleanly */
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease-out;
+  will-change: transform;
+}
+
+/* Transitions the whole bar downwards completely off-screen bounds when scrolling down */
+.navSlotHidden {
+  transform: translateY(110px);
+  opacity: 0;
+}
+
+.railSlot {
+  display: none;
+}
+
 @media (min-width: 1024px) {
   .shell {
     flex-direction: row;
-    max-width: var(--app-max);
+    max-width: var(--content-max);
     margin: 0 auto;
   }
-
   .railSlot {
     display: flex;
     flex: none;
@@ -15,13 +59,10 @@
     align-items: center;
     justify-content: center;
     padding: 24px 12px;
-    text-decoration: none;
   }
-
   .navSlot {
     display: none;
   }
-
   .content {
     padding-bottom: 24px;
   }

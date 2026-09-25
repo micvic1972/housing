@@ -7,30 +7,39 @@
   gap: 2px;
   padding: 6px;
   border-radius: 28px;
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--border);
-}
-.bar::-webkit-scrollbar {
-  display: none;
+
+  /* 🛠️ Crucial addition: Adds a smooth transform animate ease curve */
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s linear;
+  will-change: transform;
 }
 
+/* 🛠️ New Class Modifier: Smoothly drops the nav slot straight off-screen when scrolling down [0.1] */
+.barHidden {
+  transform: translateY(calc(var(--nav-h) + 60px));
+  opacity: 0;
+  pointer-events: none; /* disables accidental taps while hidden */
+}
+
+/* ... leave all your existing .item, .icon, and .label rule blocks exactly as they were below ... */
 .item {
-  flex: 1 1 0;
-  min-width: 56px;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 8px 4px;
+  gap: 2px;
+  padding: 6px 2px;
   border-radius: 22px;
   color: var(--text);
   text-decoration: none;
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  box-sizing: border-box;
 }
 .item[aria-current="page"] {
   background-color: var(--primary);
@@ -39,17 +48,15 @@
 .item:active {
   transform: scale(0.94);
 }
-
 .icon {
   flex: none;
 }
-
 .label {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
   white-space: nowrap;
+  max-width: 100%;
 }

@@ -1,43 +1,57 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Search } from "lucide-react";
+
 import { FEEDS, type FeedId } from "../../../config/feeds";
-import { smoothScrollTo } from "../../../lib/smoothScrollTo";
+import { useFilters } from "../../../components/filter/FilterProvider";
 import { cx } from "../../../lib/cx";
+
 import base from "./DiscoveryTabs.module.css";
 import desktop from "./DiscoveryTabs.desktop.module.css";
 
 interface DiscoveryTabsProps {
-  defaultId?: FeedId;
-  onChange?: (id: FeedId) => void;
-  onSearchPress?: () => void;
+  activeId: FeedId;
+  onChange: (id: FeedId) => void;
 }
 
-export default function DiscoveryTabs({ defaultId = "for-you", onChange, onSearchPress }: DiscoveryTabsProps) {
-  const [activeId, setActiveId] = useState<FeedId>(defaultId);
-  const pillRef = useRef<HTMLDivElement>(null);
+export default function DiscoveryTabs({
+  activeId,
+  onChange,
+}: DiscoveryTabsProps) {
+  const { openSheet } = useFilters();
+
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  function selectTab(id: FeedId) {
-    setActiveId(id);
-    onChange?.(id);
-
-    const pill = pillRef.current;
+  function centerTab(id: FeedId) {
     const tab = tabRefs.current[id];
-    if (!pill || !tab) return;
+    if (!tab) return;
+    tab.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }
 
-    const target = tab.offsetLeft - (pill.clientWidth - tab.offsetWidth) / 2;
-    const max = pill.scrollWidth - pill.clientWidth;
-    smoothScrollTo(pill, Math.max(0, Math.min(target, max)));
+  function selectTab(id: FeedId) {
+    onChange(id);
+    requestAnimationFrame(() => {
+      centerTab(id);
+    });
   }
 
   return (
     <header className={base.topbar}>
       <div className={cx(base.row, desktop.row)}>
-        <div className={base.pill} role="tablist" aria-label="Discovery feeds" ref={pillRef}>
+        <div
+          className={base.pill}
+          role="tablist"
+          aria-label="Discovery feeds"
+          aria-orientation="horizontal"
+        >
           {FEEDS.map((feed) => {
             const active = feed.id === activeId;
+
             return (
               <button
                 key={feed.id}
@@ -49,20 +63,24 @@ export default function DiscoveryTabs({ defaultId = "for-you", onChange, onSearc
                 className={cx(base.tab, desktop.tab)}
                 aria-selected={active}
                 tabIndex={active ? 0 : -1}
-                onClick={() => selectTab(feed.id)}
+                onClick={() => {
+                  selectTab(feed.id);
+                }}
               >
                 {feed.label}
               </button>
             );
           })}
         </div>
+
         <button
           type="button"
           className={cx(base.searchBtn, desktop.searchBtn)}
           aria-label="Search and filter"
-          onClick={onSearchPress}
+          aria-haspopup="dialog"
+          onClick={() => openSheet("all")}
         >
-          <Search size={19} />
+          <Search size={19} aria-hidden="true" />
         </button>
       </div>
     </header>

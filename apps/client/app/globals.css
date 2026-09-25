@@ -42,8 +42,13 @@
   --z-toast: 60;
 }
 
-html, body {
-  max-width: 100%;
+html {
+  overflow-x: clip;
+  width: 100%;
+}
+body {
+  margin: 0;
+  width: 100%;
   overflow-x: clip;
 }
 

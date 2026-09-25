@@ -13,19 +13,7 @@ interface FeedGridProps {
 
 export default function FeedGrid({ listings, saved, onToggleSave, onOpen }: FeedGridProps) {
   return (
-    /* Enforces centered alignment rules at the grid root container scale */
-    <div 
-      className={styles.grid} 
-      style={{ 
-        width: "100%", 
-        maxWidth: "600px", 
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: "14px",
-        alignItems: "center"
-      }}
-    >
+    <div className={styles.grid}>
       {listings.map((listing) => (
         <ListingCard
           key={listing.id}

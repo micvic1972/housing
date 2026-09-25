@@ -2,77 +2,104 @@
   position: sticky;
   top: 0;
   z-index: var(--z-tabs);
+
   display: flex;
   justify-content: center;
+
   padding: 12px var(--gutter) 10px;
-  pointer-events: none;
 }
 
 .row {
   display: flex;
   align-items: center;
   gap: 10px;
+
+  width: 100%;
   max-width: 100%;
   min-width: 0;
-  pointer-events: auto;
 }
-
 .pill {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 6px;
   border-radius: 999px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  scrollbar-width: none;
-  min-width: 0;
-  background: var(--surface);
   border: 1px solid var(--border);
-  scroll-behavior: auto; /* the JS animation drives this now, not native smooth-scroll */
-  /* ...keep every other line in .pill exactly as it already is... */
-
+  background: var(--surface);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: auto;
+  touch-action: pan-x;
 }
+
 .pill::-webkit-scrollbar {
   display: none;
 }
 
 .tab {
-  flex: none;
+  flex: 0 0 auto;
   height: 38px;
   padding: 0 16px;
+  border: 0;
   border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
-  color: var(--text);
-  background-color: transparent;
+  cursor: pointer;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
+
 .tab[aria-selected="true"] {
   background-color: var(--primary);
   color: var(--on-primary);
 }
+
 .tab:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
 }
 
 .searchBtn {
-  flex: none;
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  color: var(--text);
-  background: var(--primary-tint);
+  padding: 0;
   border: 1px solid var(--soft-line);
+  border-radius: 50%;
+  background: var(--primary-tint);
+  color: var(--text);
+  cursor: pointer;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
   transition: transform 0.1s ease;
 }
+
 .searchBtn:active {
   transform: scale(0.94);
+}
+
+.searchBtn:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
 }
