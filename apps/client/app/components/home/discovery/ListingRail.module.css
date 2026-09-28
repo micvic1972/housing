@@ -1,0 +1,220 @@
+/* =========================================================
+   UniNest — Listing Rail
+   ---------------------------------------------------------
+   This styles one horizontal discovery section.
+
+   Example:
+
+   Near the gate
+   Shortest walk to UNIDEL
+
+   [ Listing ] [ Listing ] [ Listing ] →
+
+   The same ListingCard is reused inside every rail.
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   SECTION
+   --------------------------------------------------------- */
+
+.section {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 0 6px;
+}
+
+
+/* ---------------------------------------------------------
+   SECTION HEADING
+   --------------------------------------------------------- */
+
+.heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+
+  min-width: 0;
+
+  margin-bottom: 10px;
+}
+
+.headingCopy {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+
+  color: var(--text);
+
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.reason {
+  margin: 3px 0 0;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action {
+  flex: 0 0 auto;
+}
+
+
+/* ---------------------------------------------------------
+   HORIZONTAL RAIL
+   ---------------------------------------------------------
+
+   Important:
+   - overflow-x allows finger swiping on phones.
+   - overflow-y stays hidden so the rail does not create
+     accidental vertical scrolling.
+   - No pointer-events:none anywhere.
+   - Each card keeps a visible portion of the next card,
+     giving the user a visual hint that the row is scrollable.
+   --------------------------------------------------------- */
+
+.rail {
+  display: flex;
+  align-items: stretch;
+
+  gap: 12px;
+
+  width: 100%;
+  min-width: 0;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  padding-bottom: 6px;
+
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+
+  scroll-snap-type: x proximity;
+
+  /* Firefox */
+  scrollbar-width: none;
+}
+
+
+/* Chrome / Edge / Safari */
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* ---------------------------------------------------------
+   RAIL ITEM
+   --------------------------------------------------------- */
+
+.item {
+  /*
+    On a phone, one card occupies most of the screen while
+    still exposing part of the next card.
+
+    This is deliberate.
+
+    The visible next card teaches the user:
+    "There is more → swipe."
+
+    We are not using a fixed pixel width for the card.
+  */
+
+  flex: 0 0 82%;
+
+  min-width: 0;
+
+  scroll-snap-align: start;
+}
+
+
+/* ---------------------------------------------------------
+   TABLET / iPAD
+   --------------------------------------------------------- */
+
+@media (min-width: 600px) {
+  .section {
+    padding-top: 10px;
+    padding-bottom: 8px;
+  }
+
+  .heading {
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .reason {
+    font-size: 13px;
+  }
+
+  .rail {
+    gap: 16px;
+  }
+
+  /*
+    Two cards can comfortably participate in the rail while
+    leaving a visual hint of another card.
+  */
+
+  .item {
+    flex-basis: 44%;
+  }
+}
+
+
+/* ---------------------------------------------------------
+   DESKTOP
+   --------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .section {
+    padding-top: 12px;
+    padding-bottom: 10px;
+  }
+
+  .heading {
+    margin-bottom: 14px;
+  }
+
+  .title {
+    font-size: 19px;
+  }
+
+  .reason {
+    font-size: 13px;
+  }
+
+  .rail {
+    gap: 18px;
+  }
+
+  /*
+    Desktop gets several cards visible at once.
+
+    We still keep the rail horizontally scrollable because
+    discovery rails are intentionally different from the
+    normal listing grid.
+  */
+
+  .item {
+    flex-basis: 31%;
+  }
+}

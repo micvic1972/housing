@@ -1,4 +1,15 @@
+/* 
+ * DESIGN TOKENS & ALIGNMENT UTILITIES
+ * Cleaned up and unified into a single structural block
+ */
 :root {
+  /* ---- Liquid glass surfaces ---- */
+  --glass-fill: rgba(96, 165, 250, 0.16);
+  --glass-border: rgba(148, 197, 253, 0.34);
+  --glass-highlight: rgba(255, 255, 255, 0.3);
+  --glass-shadow: rgba(2, 6, 23, 0.6);
+
+  /* ---- Brand palette ---- */
   --bg: #0b1120;
   --surface: #1e293b;
   --primary: #3b82f6;
@@ -10,6 +21,7 @@
   --urgent: #fb7185;
   --on-primary: #0b1120;
 
+  /* ---- Derived tints ---- */
   --bg-glass: rgba(11, 17, 32, 0.88);
   --bg-inset: rgba(11, 17, 32, 0.55);
   --overlay: rgba(3, 7, 18, 0.62);
@@ -27,38 +39,47 @@
   --tag-text: #cbd5e1;
   --toast-bg: #e2e8f0;
 
+  /* ---- Type & Layout ---- */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-
   --tabs-h: 50px;
   --nav-h: 60px;
   --rail-w: 88px;
   --gutter: 8px;
   --content-max: 1320px;
+  --app-max: 1680px;
   --radius-card: 22px;
   --radius-control: 14px;
 
+  /* ---- Stacking ---- */
   --z-tabs: 20;
   --z-nav: 30;
   --z-toast: 60;
 }
 
-html {
-  overflow-x: clip;
-  width: 100%;
+/* Enforce strict padding calculation boundaries globally */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
-body {
-  margin: 0;
+
+/* 🛠️ FIX: Only html handles horizontal clipping to protect sticky/fixed items */
+html {
   width: 100%;
+  max-width: 100%;
   overflow-x: clip;
 }
 
+/* 🛠️ FIX: Removed overflow-x: clip from body entirely so mobile touches register instantly */
 body {
   margin: 0;
+  width: 100%;
+  min-height: 100dvh;
   background: var(--bg, #0b1120);
   color: var(--text, #f8fafc);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  /* 🛠️ Unlocks absolute rapid-touch response on mobile phone browsers */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -83,7 +104,6 @@ button {
   display: none;
 }
 
-/* --- Added Layout Alignment Utilities --- */
 .container {
   width: 100%;
   max-width: var(--content-max, 1320px);
@@ -98,6 +118,7 @@ button {
   justify-content: center;
 }
 
+/* Responsive screen gutters */
 @media (min-width: 360px) {
   :root { --gutter: 12px; }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Listing } from "../../../types/listing";
+import type { Listing } from "../listingcard/types";
 import ListingCard from "../listingcard/ListingCard";
 import styles from "./FeedGrid.module.css";
 

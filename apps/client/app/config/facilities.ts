@@ -1,5 +1,5 @@
 import { Droplet, Zap, Wifi, Lock, type LucideIcon } from "lucide-react";
-import type { FacilityId } from "../types/listing";
+import type { FacilityId } from "../components/home/listingcard/types";
 
 // Display metadata for each facility tag shown on a card.
 export const FACILITIES: Record<FacilityId, { label: string; icon: LucideIcon }> = {

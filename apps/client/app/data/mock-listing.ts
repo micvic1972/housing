@@ -1,4 +1,4 @@
-import type { Listing } from "../types/listing";
+import type { Listing } from "../components/home/listingcard/types";
 
 const DAY = 86_400_000;
 const HOUR = 3_600_000;

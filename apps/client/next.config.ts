@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     ],
   },
   //  Move this out of experimental and place it at the root level:
-  allowedDevOrigins: ["10.62.0.69", "localhost:3000"]
+  allowedDevOrigins: ["192.168.18.10", "localhost:3000"]
 };
 
 export default nextConfig;
