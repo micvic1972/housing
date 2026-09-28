@@ -1,4 +1,9 @@
-import type { BudgetBand, FilterFields, Filters } from "./filter-types";
+import type {
+  BudgetBand,
+  FilterFields,
+  FilterKey,
+  Filters,
+} from "./filter-types";
 
 /**
  * FILTER OPTIONS. To add a room type, an area or a budget band, edit the lists below.
@@ -32,31 +37,68 @@ export const AREA_OPTIONS: readonly string[] = [
   "Old Market Side",
 ];
 
+/** Walking distance from the gate. Distance works as a second price tag for students. */
+export const DISTANCE_OPTIONS: ReadonlyArray<{ value: number; label: string }> = [
+  { value: 0.5, label: "Within 0.5 km" },
+  { value: 1, label: "Within 1 km" },
+];
+
+/**
+ * The switches that live in the "More" tab. The More chip and the tab's dot
+ * both use this list, so adding a switch here keeps them in step.
+ */
+export const MORE_FILTER_KEYS: readonly FilterKey[] = [
+  "verified",
+  "ownerOnly",
+  "noFee",
+  "lowUpfront",
+  "gated",
+  "hideRented",
+];
+
 export const EMPTY_FILTERS: Filters = {
   budget: null,
   room: null,
   area: null,
+  maxKm: null,
   verified: false,
+  ownerOnly: false,
+  noFee: false,
+  lowUpfront: false,
+  gated: false,
+  hideRented: false,
   q: "",
 };
 
 /** How many filters are switched on (useful for a badge). */
 export function countActiveFilters(f: Filters): number {
-  return [f.budget, f.room, f.area, f.verified, f.q].filter(Boolean).length;
+  return [
+    f.budget,
+    f.room,
+    f.area,
+    f.maxKm,
+    f.verified,
+    f.ownerOnly,
+    f.noFee,
+    f.lowUpfront,
+    f.gated,
+    f.hideRented,
+    f.q,
+  ].filter(Boolean).length;
+}
+
+/** How many of the "More" switches are on. */
+export function countMoreFilters(f: Filters): number {
+  return MORE_FILTER_KEYS.filter((key) => Boolean(f[key])).length;
 }
 
 /**
  * Keep only the items that pass every active filter.
  *
- * `pick` tells the filters how to read YOUR item. Example for a listing with these fields:
- *   const pick = (a: Accommodation): FilterFields => ({
- *     price: a.pricePerYear,
- *     room: a.roomType,
- *     area: a.area,
- *     verified: a.verified,
- *     text: `${a.name} ${a.area}`,
- *   });
- *   const shown = applyFilters(items, filters, pick);
+ * `pick` tells the filters how to read YOUR item (see listing-fields.ts).
+ *
+ * Honest-gap rule: a filter only keeps places where the fact is CONFIRMED.
+ * If a fact is unknown (undefined), the place is hidden while that filter is on.
  */
 export function applyFilters<T>(items: readonly T[], f: Filters, pick: (item: T) => FilterFields): T[] {
   const band = f.budget ? BUDGET_OPTIONS.find((o) => o.value === f.budget) : undefined;
@@ -68,6 +110,12 @@ export function applyFilters<T>(items: readonly T[], f: Filters, pick: (item: T)
     if (f.room && x.room !== f.room) return false;
     if (f.area && x.area !== f.area) return false;
     if (band && !band.matches(x.price)) return false;
+    if (f.maxKm !== null && (x.km === undefined || x.km > f.maxKm)) return false;
+    if (f.ownerOnly && !x.owner) return false;
+    if (f.noFee && !x.noFee) return false;
+    if (f.lowUpfront && !x.lowUpfront) return false;
+    if (f.gated && !x.gated) return false;
+    if (f.hideRented && !x.available) return false;
     if (query && !x.text.toLowerCase().includes(query)) return false;
     return true;
   });

@@ -1,20 +1,22 @@
 "use client";
 
 // ============================================================================
-// FilterSheet (Step 4)
+// FilterSheet
 //
 // Tabs: Budget · Room · Area · More. Budget is first. One tab shows at a time
-// so each view fits without scrolling (HousingAnywhere and VRBO put every
-// filter in one long scroll, which makes people hunt).
+// so each view fits without a long scroll.
 //
-// It reuses the BottomSheet shell from Step 2, so it automatically gets:
-//   - a bottom sheet under 1024px, a centred modal at 1024px and wider
-//   - the X, backdrop tap, Escape and drag-down close paths
-//   - a footer that never scrolls away
+//   Area tab: an area, plus how far you will walk from the gate.
+//   More tab: six on/off switches in four groups, each answering one of the
+//             student's jobs (trust, payment, safety, availability).
+//
+// It reuses the BottomSheet shell, so it is a bottom sheet under 1024px and a
+// centred modal at 1024px and wider, with the X, backdrop, Escape and
+// drag-down close paths and a footer that never scrolls away.
 //
 // Filters apply the moment a student taps them. The footer shows how many
-// places match RIGHT NOW ("Show 7 places"), so every tap gives feedback.
-// Tapping a selected option again clears it.
+// places match RIGHT NOW ("Show 7 places"). Tapping a selected option again
+// clears it.
 // ============================================================================
 
 import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -23,8 +25,10 @@ import { LISTINGS } from "../home/listingcard/data";
 import {
   AREA_OPTIONS,
   BUDGET_OPTIONS,
+  DISTANCE_OPTIONS,
   ROOM_OPTIONS,
   applyFilters,
+  countMoreFilters,
 } from "./filter-config";
 import type { SheetMode } from "./filter-types";
 import { useFilters } from "./FilterProvider";
@@ -38,6 +42,72 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "room", label: "Room" },
   { id: "area", label: "Area" },
   { id: "more", label: "More" },
+];
+
+// The switches in the More tab, grouped by the question they answer.
+// To add a switch: add its key to Filters (filter-types.ts), then add a row here.
+type MoreKey =
+  | "verified"
+  | "ownerOnly"
+  | "noFee"
+  | "lowUpfront"
+  | "gated"
+  | "hideRented";
+
+const MORE_GROUPS: {
+  title: string;
+  items: { key: MoreKey; title: string; hint: string }[];
+}[] = [
+  {
+    title: "Trust",
+    items: [
+      {
+        key: "verified",
+        title: "Verified only",
+        hint: "Only places UniNest has verified",
+      },
+      {
+        key: "ownerOnly",
+        title: "Owner, not an agent",
+        hint: "You deal directly with the owner",
+      },
+    ],
+  },
+  {
+    title: "Payment",
+    items: [
+      {
+        key: "noFee",
+        title: "Confirmed no inspection fee",
+        hint: "Hides places that charge, or where it is not confirmed",
+      },
+      {
+        key: "lowUpfront",
+        title: "One year or less upfront",
+        hint: "Hides places asking for more, or not reported",
+      },
+    ],
+  },
+  {
+    title: "Safety",
+    items: [
+      {
+        key: "gated",
+        title: "Gated compound",
+        hint: "Hides places not confirmed as gated",
+      },
+    ],
+  },
+  {
+    title: "Availability",
+    items: [
+      {
+        key: "hideRented",
+        title: "Hide rented places",
+        hint: "Only places you can still get",
+      },
+    ],
+  },
 ];
 
 // Which tab opens first depends on which chip the student tapped.
@@ -96,7 +166,7 @@ export function FilterSheet() {
 export default FilterSheet;
 
 // ----------------------------------------------------------------------------
-// One tappable option (a room type, an area, a budget band).
+// One tappable option (a room type, an area, a budget band, a distance).
 // ----------------------------------------------------------------------------
 
 function Option({
@@ -121,6 +191,40 @@ function Option({
 }
 
 // ----------------------------------------------------------------------------
+// One on/off row in the More tab.
+// ----------------------------------------------------------------------------
+
+function SwitchRow({
+  title,
+  hint,
+  on,
+  onToggle,
+}: {
+  title: string;
+  hint: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      className={styles.switchRow}
+      onClick={onToggle}
+    >
+      <span className={styles.switchText}>
+        <b>{title}</b>
+        <span>{hint}</span>
+      </span>
+      <span className={`${styles.track} ${on ? styles.trackOn : ""}`} aria-hidden>
+        <span className={styles.thumb} />
+      </span>
+    </button>
+  );
+}
+
+// ----------------------------------------------------------------------------
 // The tabs and their content.
 // ----------------------------------------------------------------------------
 
@@ -134,8 +238,8 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
   const isOn: Record<TabId, boolean> = {
     budget: filters.budget !== null,
     room: filters.room !== null,
-    area: filters.area !== null,
-    more: filters.verified,
+    area: filters.area !== null || filters.maxKm !== null,
+    more: countMoreFilters(filters) > 0,
   };
 
   // Left / Right arrows move between tabs (same as the listing detail tabs).
@@ -239,6 +343,7 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
 
         {tab === "area" ? (
           <>
+            <h3 className={styles.groupTitle}>Area</h3>
             <div className={styles.options}>
               {AREA_OPTIONS.map((a) => (
                 <Option
@@ -249,29 +354,41 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
                 />
               ))}
             </div>
-            <p className={styles.hint}>Areas around UNIDEL. Tap again to clear.</p>
+
+            <h3 className={styles.groupTitle}>Walk from the gate</h3>
+            <div className={styles.options}>
+              {DISTANCE_OPTIONS.map((d) => (
+                <Option
+                  key={d.value}
+                  label={d.label}
+                  selected={filters.maxKm === d.value}
+                  onClick={() =>
+                    setFilter("maxKm", filters.maxKm === d.value ? null : d.value)
+                  }
+                />
+              ))}
+            </div>
+            <p className={styles.hint}>Tap again to clear.</p>
           </>
         ) : null}
 
         {tab === "more" ? (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={filters.verified}
-            className={styles.switchRow}
-            onClick={() => setFilter("verified", !filters.verified)}
-          >
-            <span className={styles.switchText}>
-              <b>Verified only</b>
-              <span>Only places UniNest has verified</span>
-            </span>
-            <span
-              className={`${styles.track} ${filters.verified ? styles.trackOn : ""}`}
-              aria-hidden
-            >
-              <span className={styles.thumb} />
-            </span>
-          </button>
+          <>
+            {MORE_GROUPS.map((group) => (
+              <section key={group.title} className={styles.group}>
+                <h3 className={styles.groupTitle}>{group.title}</h3>
+                {group.items.map((item) => (
+                  <SwitchRow
+                    key={item.key}
+                    title={item.title}
+                    hint={item.hint}
+                    on={filters[item.key]}
+                    onToggle={() => setFilter(item.key, !filters[item.key])}
+                  />
+                ))}
+              </section>
+            ))}
+          </>
         ) : null}
       </div>
     </div>
