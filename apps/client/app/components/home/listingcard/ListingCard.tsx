@@ -1,20 +1,38 @@
 "use client";
 
 // ============================================================================
-// ListingCard
+// ListingCard v3
 //
-// This is the discovery card.
-// Its job is to give the student enough information to decide:
-// "Is this place worth opening?"
+// The discovery card. Its job: give the student enough to decide
+// "is this place worth opening?"
 //
-// IMPORTANT:
-// This component must render the SAME HTML on the server and browser.
-// That means we avoid values that change while rendering, such as Date.now()
-// and dynamically-generated image strings.
+// What is new in v3:
+//   1. The photo is a sideways swipe carousel (CSS scroll-snap, no library).
+//   2. Dots show which photo you are on.
+//   3. A small up-arrow in a glass circle says "tap to open a quick look".
+//   4. The FIRST card the student sees plays a one-time "peek": its photos
+//      slide left a little and back, teaching that the photo can be swiped.
+//   5. Layering: the photo sits ABOVE the stretched name overlay, so swipes
+//      reach the carousel. Tapping the photo (a click, which a swipe does not
+//      produce) opens the sheet. The name button is still the keyboard and
+//      screen-reader way to open.
+//
+// HYDRATION RULE (unchanged): the server and browser must render the same
+// HTML. So no Date.now(), no random values while rendering. The peek and the
+// dots only run AFTER the page is in the browser (inside useEffect / events).
 // ============================================================================
 
-import { Heart, ShieldCheck, Star, HardHat, Clock } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowUp,
+  Clock,
+  HardHat,
+  Heart,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import type { Listing } from "./types";
+import { placeholderScene } from "./placeholder-scene";
 import styles from "./ListingCard.module.css";
 
 type Props = {
@@ -26,86 +44,26 @@ type Props = {
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
-// ============================================================================
-// TEMPORARY STABLE PLACEHOLDER
+// ----------------------------------------------------------------------------
+// One-time peek bookkeeping.
 //
-// Until real listing photos exist, we use one fixed SVG image.
-//
-// The previous version generated the SVG during rendering. Even though the
-// generator was intended to be deterministic, the browser reported that the
-// server and client produced different image src attributes.
-//
-// A fixed value removes that entire class of hydration mismatch.
-// When real listing photos are connected, this placeholder disappears.
-// ============================================================================
+// `peekPlayed` lives at module level, so all cards share it: once ANY card has
+// peeked, no other card will. sessionStorage makes it survive a page reload
+// within the same tab (wrapped in try/catch because private modes can block it).
+// ----------------------------------------------------------------------------
+const PEEK_KEY = "uninest-peek-played";
+let peekPlayed = false;
 
-const PLACEHOLDER_SCENE =
-  "data:image/svg+xml;charset=UTF-8," +
-  encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="hsl(220,55%,16%)"/>
-          <stop offset="1" stop-color="hsl(220,58%,32%)"/>
-        </linearGradient>
-      </defs>
+// ----------------------------------------------------------------------------
+// Trust / payment signals: at most two, warnings first.
+// ----------------------------------------------------------------------------
 
-      <rect width="400" height="300" fill="url(#g)"/>
-
-      <circle
-        cx="320"
-        cy="45"
-        r="16"
-        fill="hsl(220,85%,84%)"
-        opacity=".85"
-      />
-
-      <rect
-        x="85"
-        y="54"
-        width="230"
-        height="156"
-        rx="4"
-        fill="hsl(220,36%,20%)"
-      />
-
-      <rect x="100" y="64" width="34" height="28" rx="3" fill="hsl(220,85%,84%)"/>
-      <rect x="150" y="64" width="34" height="28" rx="3" fill="hsl(220,32%,29%)"/>
-      <rect x="200" y="64" width="34" height="28" rx="3" fill="hsl(220,85%,84%)"/>
-      <rect x="250" y="64" width="34" height="28" rx="3" fill="hsl(220,32%,29%)"/>
-
-      <rect x="100" y="108" width="34" height="28" rx="3" fill="hsl(220,32%,29%)"/>
-      <rect x="150" y="108" width="34" height="28" rx="3" fill="hsl(220,85%,84%)"/>
-      <rect x="200" y="108" width="34" height="28" rx="3" fill="hsl(220,85%,84%)"/>
-      <rect x="250" y="108" width="34" height="28" rx="3" fill="hsl(220,32%,29%)"/>
-
-      <rect x="100" y="152" width="34" height="28" rx="3" fill="hsl(220,85%,84%)"/>
-      <rect x="150" y="152" width="34" height="28" rx="3" fill="hsl(220,32%,29%)"/>
-      <rect x="200" y="152" width="34" height="28" rx="3" fill="hsl(220,85%,84%)"/>
-      <rect x="250" y="152" width="34" height="28" rx="3" fill="hsl(220,32%,29%)"/>
-
-      <rect
-        y="210"
-        width="400"
-        height="90"
-        fill="hsl(220,42%,10%)"
-      />
-    </svg>
-  `);
-
-// ============================================================================
-// Trust / payment signals
-//
-// We intentionally show only a small number of important facts on the card.
-// The full explanation belongs in the Quick View sheet later.
-// ============================================================================
-
-type Signal = {
+ export type Signal = {
   text: string;
   tone: "warn" | "good" | "neutral";
 };
 
-function getSignals(l: Listing): Signal[] {
+export function getSignals(l: Listing): Signal[] {
   if (l.kind === "rented") return [];
 
   const out: Signal[] = [];
@@ -114,40 +72,25 @@ function getSignals(l: Listing): Signal[] {
   const years = l.paymentOptions?.requiresUpfrontYears;
 
   if (fee) {
-    out.push({
-      text: `${naira(fee.amount)} to inspect`,
-      tone: "warn",
-    });
+    out.push({ text: `${naira(fee.amount)} to inspect`, tone: "warn" });
   }
 
   if (years) {
-    out.push({
-      text: `${years} yrs upfront`,
-      tone: "warn",
-    });
+    out.push({ text: `${years} yrs upfront`, tone: "warn" });
   }
 
   if (fee === null) {
-    out.push({
-      text: "No inspection fee",
-      tone: "good",
-    });
+    out.push({ text: "No inspection fee", tone: "good" });
   } else if (fee === undefined && l.contact) {
-    out.push({
-      text: "Fee not confirmed",
-      tone: "neutral",
-    });
+    out.push({ text: "Fee not confirmed", tone: "neutral" });
   }
 
   return out.slice(0, 2);
 }
 
-// ============================================================================
-// State chip
-//
-// This tells the student what is special about the listing without requiring
-// them to open it.
-// ============================================================================
+// ----------------------------------------------------------------------------
+// State chip on the photo (bottom-left).
+// ----------------------------------------------------------------------------
 
 function getPhotoChip(
   l: Listing,
@@ -163,30 +106,21 @@ function getPhotoChip(
       };
 
     case "expiring":
-      // IMPORTANT:
-      // We deliberately don't calculate "Opens in X days" here.
-      // Date.now() changes between server render and browser hydration.
-      // "Frees up soon" communicates the same important state without
-      // introducing a hydration mismatch.
-      return {
-        text: "Frees up soon",
-        icon: "clock",
-      };
+      // We don't calculate "Opens in N days" here: Date.now() differs between
+      // server and browser and would break hydration. A live countdown comes later.
+      return { text: "Frees up soon", icon: "clock" };
 
     case "rented":
-      return {
-        text: "Rented",
-        icon: null,
-      };
+      return { text: "Rented", icon: null };
 
     default:
       return null;
   }
 }
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // CARD
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 export function ListingCard({
   listing,
@@ -197,31 +131,158 @@ export function ListingCard({
   const signals = getSignals(listing);
   const chip = getPhotoChip(listing);
   const km = listing.location.distanceFromUniversityKm;
+  const isBuild = listing.kind === "construction";
 
-  // If the listing eventually has real photos, use the real photo.
-  // Otherwise use our stable placeholder.
-  const imageSrc = listing.images?.[0]?.url || PLACEHOLDER_SCENE;
+  // Build the list of photos to show. If a photo has a real url, use it;
+  // otherwise draw the placeholder for that photo position (0, 1, 2).
+  // If a listing somehow has no images at all, we still show one placeholder.
+  const slides = useMemo(() => {
+    const source =
+      listing.images && listing.images.length > 0
+        ? listing.images
+        : [{ id: `${listing.id}-ph`, url: "", alt: listing.name }];
+
+    return source.map((img, i) => ({
+      key: img.id,
+      alt: img.alt,
+      src: img.url || placeholderScene(listing.id, isBuild, i),
+    }));
+  }, [listing.id, listing.images, listing.name, isBuild]);
+
+  const count = slides.length;
+
+  const cardRef = useRef<HTMLElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef(0);
+
+  // Which photo is showing (drives the active dot).
+  const [active, setActive] = useState(0);
+
+  // --------------------------------------------------------------------------
+  // Dots follow the scroll position.
+  // Scroll events fire many times per frame, so we only work once per frame
+  // (requestAnimationFrame) and only update state when the photo number changes.
+  // --------------------------------------------------------------------------
+  const handleScroll = useCallback(() => {
+    if (rafRef.current) return;
+
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const el = scrollerRef.current;
+      if (!el || el.clientWidth === 0) return;
+
+      const index = Math.round(el.scrollLeft / el.clientWidth);
+      setActive(Math.min(Math.max(index, 0), count - 1));
+    });
+  }, [count]);
+
+  // Stop any pending animation frame if the card leaves the page.
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // --------------------------------------------------------------------------
+  // The one-time peek.
+  // Plays on the first card that becomes at least 60% visible. Skipped when
+  // there is only one photo, when it already played this session, or when the
+  // person prefers reduced motion.
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (count < 2 || peekPlayed) return;
+
+    try {
+      if (sessionStorage.getItem(PEEK_KEY) === "1") {
+        peekPlayed = true;
+        return;
+      }
+    } catch {
+      // storage blocked: fine, the module flag still limits it to once per load
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const card = cardRef.current;
+    if (!card || !("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+
+          observer.disconnect();
+
+          // Another card may have peeked while we were waiting.
+          if (peekPlayed) return;
+          peekPlayed = true;
+          try {
+            sessionStorage.setItem(PEEK_KEY, "1");
+          } catch {
+            // ignore
+          }
+
+          // Slide every photo left ~34px and back over 1.2s. Because photos
+          // sit side by side, the next photo slides into view at the edge.
+          const imgs = scrollerRef.current?.querySelectorAll("img");
+          imgs?.forEach((img) => {
+            img.animate(
+              [
+                { transform: "translateX(0)", offset: 0 },
+                { transform: "translateX(-34px)", offset: 0.4 },
+                { transform: "translateX(-34px)", offset: 0.55 },
+                { transform: "translateX(0)", offset: 1 },
+              ],
+              { duration: 1200, easing: "ease-in-out" },
+            );
+          });
+          return;
+        }
+      },
+      { threshold: 0.6 },
+    );
+
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [count]);
 
   return (
     <article
+      ref={cardRef}
       className={`${styles.card} ${
         listing.kind === "rented" ? styles.rented : ""
       }`}
     >
       {/* ====================================================================
-          PHOTO
+          PHOTO AREA (sits above the stretched name overlay)
           ==================================================================== */}
 
       <div className={styles.media}>
-        <img
-          className={styles.img}
-          src={imageSrc}
-          alt=""
-          loading="lazy"
-          draggable={false}
-        />
+        {/* The swipeable strip. A click here (a tap, NOT a swipe) opens the
+            sheet. Keyboard users use the name button below instead. */}
+        <div
+          ref={scrollerRef}
+          className={styles.scroller}
+          onScroll={handleScroll}
+          onClick={() => onOpen?.(listing.id)}
+        >
+          {slides.map((s) => (
+            <div key={s.key} className={styles.slide}>
+              <img
+                className={styles.img}
+                src={s.src}
+                alt={s.alt}
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
+          ))}
+        </div>
 
-        {/* Verified status */}
+        {/* Everything below is decoration on top of the photo. None of it is
+            tappable, so pointer-events: none (in CSS) lets swipes and taps
+            pass straight through to the strip underneath. */}
+
         {listing.verified ? (
           <span className={styles.verified}>
             <ShieldCheck size={12} aria-hidden />
@@ -229,52 +290,54 @@ export function ListingCard({
           </span>
         ) : null}
 
-        {/* Construction / availability / rented state */}
         {chip ? (
           <span className={styles.chip}>
-            {chip.icon === "hat" ? (
-              <HardHat size={12} aria-hidden />
-            ) : null}
-
-            {chip.icon === "clock" ? (
-              <Clock size={12} aria-hidden />
-            ) : null}
-
+            {chip.icon === "hat" ? <HardHat size={12} aria-hidden /> : null}
+            {chip.icon === "clock" ? <Clock size={12} aria-hidden /> : null}
             {chip.text}
           </span>
         ) : null}
 
-        {/* Construction progress */}
-        {listing.kind === "construction" &&
-        listing.constructionProgress != null ? (
+        {isBuild && listing.constructionProgress != null ? (
           <div
-            className={styles.track}
+            className={styles.progress}
             role="progressbar"
             aria-label="Construction progress"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={listing.constructionProgress}
           >
-            <i
-              style={{
-                width: `${listing.constructionProgress}%`,
-              }}
-            />
+            <i style={{ width: `${listing.constructionProgress}%` }} />
           </div>
         ) : null}
+
+        {/* Dots: only when there is more than one photo. */}
+        {count > 1 ? (
+          <div className={styles.dots} aria-hidden>
+            {slides.map((s, i) => (
+              <span
+                key={s.key}
+                className={`${styles.dot} ${i === active ? styles.dotOn : ""}`}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        {/* Up-arrow: points up because the sheet rises from below. */}
+        <span className={styles.arrow} aria-hidden>
+          <ArrowUp size={16} />
+        </span>
       </div>
 
       {/* ====================================================================
-          SAVE / HEART
+          SAVE / HEART (direct child of the card, highest layer)
           ==================================================================== */}
 
       <button
         type="button"
         className={`${styles.heart} ${saved ? styles.heartOn : ""}`}
         aria-label={
-          saved
-            ? `Remove ${listing.name} from saved`
-            : `Save ${listing.name}`
+          saved ? `Remove ${listing.name} from saved` : `Save ${listing.name}`
         }
         aria-pressed={!!saved}
         onClick={() => onToggleSave?.(listing.id)}
@@ -291,8 +354,8 @@ export function ListingCard({
       <div className={styles.body}>
         <div className={styles.titleRow}>
           <h3 className={styles.name}>
-            {/* The listing name is the actual keyboard-accessible button.
-                CSS can stretch its clickable area across the card. */}
+            {/* The real, keyboard-accessible button. CSS stretches its tap
+                area over the card, but the photo and heart sit above it. */}
             <button
               type="button"
               className={styles.open}

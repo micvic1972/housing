@@ -1,92 +1,194 @@
+/* The dark backdrop. Its data-mode attribute ("sheet" or "modal") is set by
+   BottomSheet.tsx from the ONE breakpoint constant, so no breakpoint
+   number is repeated in this file. */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--z-toast);
-  background: var(--overlay);
+  z-index: 100;
   display: flex;
-  align-items: flex-end;
   justify-content: center;
-  animation: fadeIn 0.2s ease;
+  align-items: flex-end; /* sheet mode: dock to the bottom */
+  background: var(--overlay);
+  animation: fadeIn 0.2s ease both;
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.overlay[data-mode="modal"] {
+  align-items: center; /* laptop: centred */
 }
 
+/* The panel itself. */
 .sheet {
-  width: 100%;
-  max-width: 560px;
-  max-height: 92dvh;
+  position: relative;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 640px; /* iPad: centred, not stretched edge to edge */
+  min-width: 0;
   background: var(--surface);
-  border-radius: 26px 26px 0 0;
+  color: var(--text);
   border: 1px solid var(--border);
-  border-bottom: none;
-  animation: slideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  border-bottom: 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  overflow: hidden;
+  outline: none;
+  /* Height animates when it snaps between half and full. */
+  transition: height 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+.half {
+  height: 64dvh;
+}
+.full {
+  height: 92dvh;
+}
+/* While a finger is dragging, follow it instantly: no animation. */
+.drag {
+  transition: none;
 }
 
+/* Laptop: a centred modal, sized by its content up to 88% of the screen. */
+.overlay[data-mode="modal"] .sheet {
+  max-width: 650px;
+  height: min(660px, 88dvh); /* fixed size, so the content scrolls inside it */
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  transition: none;
+  animation: pop 0.2s ease both;
+}
+/* Header = drag zone. touch-action: none tells the browser "do not scroll the
+   page when the finger starts here, this is a drag". */
 .header {
   flex: none;
-  padding: 8px 8px 10px;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.overlay[data-mode="modal"] .header {
+  touch-action: auto;
+  cursor: default;
 }
 
 .grabRow {
   display: flex;
   justify-content: center;
-  padding-bottom: 8px;
+  padding: 10px 0 4px;
 }
 .grab {
   width: 40px;
-  height: 5px;
-  border-radius: 5px;
-  background: var(--border);
+  height: 4px;
+  border-radius: 999px;
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+/* No drag handle on laptop. */
+.overlay[data-mode="modal"] .grabRow {
+  display: none;
 }
 
-.titleRow {
+.labelRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 36px;
-  padding: 0 6px 0 14px;
+  padding: 0 calc(var(--gutter) - 6px) 4px var(--gutter);
+}
+.overlay[data-mode="modal"] .labelRow {
+  padding-top: 12px;
+}
+.label {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-muted);
 }
 
-.title {
-  font-size: 17px;
-  font-weight: 750;
-  color: var(--text);
-}
-
+/* 40px X button. */
 .closeBtn {
-  flex: none;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
+  border: 0;
   border-radius: 50%;
-  color: var(--text-muted);
   background: var(--muted-tint);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
 }
-.closeBtn:active {
-  transform: scale(0.92);
+.closeBtn:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
 }
 
-.body {
+/* Content area. */
+.bodyWrap {
+  position: relative;
   flex: 1;
-  min-height: 0;
+  min-height: 0; /* lets the flex child shrink so the body can scroll */
+}
+.body {
+  height: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain; /* scrolling here never moves the page behind */
   -webkit-overflow-scrolling: touch;
 }
+/* At half height the content is locked. Swipe up to expand instead. */
+.bodyLocked {
+  overflow: hidden;
+}
 
+/* The soft fade at the bottom edge: "there is more, pull up". It is a leaf
+   with no children, so pointer-events: none is safe. */
+.fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+  pointer-events: none;
+}
+
+/* Footer: always visible, clear of the phone's home bar. */
 .footer {
   flex: none;
-  padding: 12px var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--surface);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Respect people who turn animation off. */
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .sheet,
+  .overlay[data-mode="modal"] .sheet {
+    animation: none;
+    transition: none;
+  }
 }

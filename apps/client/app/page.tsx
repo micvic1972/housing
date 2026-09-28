@@ -8,7 +8,7 @@
 // It connects:
 //   DiscoveryTabs
 //        ↓
-//   FilterBar
+//   FilterBar  (chips) ──opens──▶ FilterSheet
 //        ↓
 //   Listing data
 //        ↓
@@ -16,7 +16,7 @@
 //        ↓
 //   ListingCard
 //        ↓
-//   BottomSheet
+//   BottomSheet (Quick look) → ListingDetail
 //
 // Important:
 // The ListingCard still owns the appearance of ONE listing.
@@ -30,11 +30,16 @@ import ListingRail from "./components/home/discovery/ListingRail";
 import BottomSheet from "./components/ui/bottomsheet/BottomSheet";
 
 import { ListingCard } from "./components/home/listingcard/ListingCard";
+import ListingDetail, {
+  ListingDetailFooter,
+} from "./components/home/listingcard/ListingDetail";
 import { LISTINGS } from "./components/home/listingcard/data";
 
 import { FilterBar } from "./components/filter/FilterBar";
+import { FilterSheet } from "./components/filter/FilterSheet";
 import { applyFilters } from "./components/filter/filter-config";
 import { useFilters } from "./components/filter/FilterProvider";
+import { listingFilterFields } from "./components/filter/listing-fields";
 
 import type { FeedId } from "./config/feeds";
 
@@ -55,7 +60,7 @@ export default function Page() {
   const [saved, setSaved] = useState<Set<string>>(new Set());
 
   // --------------------------------------------------------------------------
-  // Which listing is currently open in the BottomSheet?
+  // Which listing is currently open in the Quick look sheet?
   // --------------------------------------------------------------------------
 
   const [openId, setOpenId] = useState<string | null>(null);
@@ -69,27 +74,14 @@ export default function Page() {
   // --------------------------------------------------------------------------
   // FIRST LAYER OF FILTERING
   //
-  // The FilterBar already knows about things such as:
-  //   price
-  //   room type
-  //   area
-  //   verification
-  //   search text
-  //
-  // We translate our nested Listing object into the flat shape expected by
-  // applyFilters().
+  // listingFilterFields teaches the filters how to read a Listing (price,
+  // room, area, verified, search text). The FilterSheet uses the very same
+  // function for its live "Show 7 places" count, so the two always agree.
   //
   // This means the discovery rails below automatically respect the user's
   // current filters.
   // --------------------------------------------------------------------------
-
-  const filteredListings = applyFilters(LISTINGS, filters, (item) => ({
-    price: item.pricing.amount,
-    room: item.roomType,
-    area: item.location.area,
-    verified: item.verified,
-    text: `${item.name} ${item.location.area} ${item.insight ?? ""}`,
-  }));
+  const filteredListings = applyFilters(LISTINGS, filters, listingFilterFields);
 
   // --------------------------------------------------------------------------
   // FIND THE LISTING CURRENTLY OPEN IN THE DETAIL SHEET.
@@ -120,8 +112,6 @@ export default function Page() {
   // FOR YOU DISCOVERY RAILS
   //
   // These are deliberately derived from the SAME filtered listings.
-  //
-  // This is important:
   //
   // We are NOT creating another dataset.
   //
@@ -316,13 +306,14 @@ export default function Page() {
       </main>
 
       {/* ================================================================
-          LISTING QUICK VIEW
+          LISTING QUICK LOOK
 
-          This is intentionally still the simple placeholder.
+          The sheet is the shell (Step 2). ListingDetail is what goes inside
+          it (photos, info, four tabs). The footer (heart + main action) is
+          handed to the sheet's footer slot so it never scrolls away.
 
-          We are NOT upgrading the BottomSheet yet.
-
-          First we make sure the discovery architecture works.
+          key={activeListing.id} makes sure a different listing always starts
+          fresh on the Overview tab.
           ================================================================ */}
 
       <BottomSheet
@@ -330,38 +321,30 @@ export default function Page() {
         onClose={() => setOpenId(null)}
         title={activeListing?.name}
         footer={
-          <button
-            style={{
-              width: "100%",
-              height: 48,
-              background: "var(--primary)",
-              color: "var(--on-primary)",
-              borderRadius: 14,
-              fontWeight: 700,
-            }}
-          >
-            {activeListing?.kind === "construction"
-              ? "Follow build"
-              : activeListing?.kind === "expiring"
-                ? "Follow room"
-                : activeListing?.kind === "rented"
-                  ? "See similar places"
-                  : "View details"}
-          </button>
+          activeListing ? (
+            <ListingDetailFooter
+              listing={activeListing}
+              saved={saved.has(activeListing.id)}
+              onToggleSave={toggleSave}
+            />
+          ) : undefined
         }
       >
-        {activeListing && (
-          <div
-            style={{
-              padding: "0 var(--gutter) 24px",
-              color: "var(--text-muted)",
-              fontSize: 14,
-            }}
-          >
-            {activeListing.insight}
-          </div>
-        )}
+        {activeListing ? (
+          <ListingDetail key={activeListing.id} listing={activeListing} />
+        ) : null}
       </BottomSheet>
+
+      {/* ================================================================
+          FILTER SHEET (Step 4)
+
+          It was missing before, which is why tapping a chip did nothing:
+          the chips set the "open" state, but nothing drew the sheet.
+          FilterSheet reads that state from FiltersProvider on its own, so
+          it needs no props.
+          ================================================================ */}
+
+      <FilterSheet />
     </>
   );
 }
