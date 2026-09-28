@@ -1,38 +1,47 @@
-/* This card is FLUID WIDTH on purpose (width: 100%). It doesn't decide its own size — whatever
-   contains it (a plain grid today, a horizontal scrolling row later) decides that. Don't add a
-   fixed width in here later; add it to the wrapper instead. */
-
+/* No box, no border, no button — the photo IS the card, text hangs underneath. */
 .card {
-  width: 100%;
+  position: relative; /* the name's ::after stretches to THIS box */
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  cursor: pointer;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
   text-align: left;
+  cursor: pointer;
 }
 
-.photo {
+.media {
   position: relative;
-  aspect-ratio: 4 / 3;
-  background: linear-gradient(160deg, #16203a, #223258);
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: var(--surface);
+  transition: transform 0.15s ease;
+}
+.card:active .media {
+  transform: scale(0.985);
 }
 
-.placeholder {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--text-muted);
-  opacity: 0.5;
+.img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+/* Decoration only — nothing depends on hover. */
+@media (hover: hover) {
+  .card:hover .img {
+    transform: scale(1.04);
+  }
+}
+.rented .img {
+  filter: grayscale(1) brightness(0.7);
 }
 
-.badge {
+.verified,
+.chip {
   position: absolute;
-  top: 10px;
-  left: 10px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -40,27 +49,60 @@
   padding: 0 9px;
   border-radius: 999px;
   background: var(--photo-chip);
-  border: 1px solid var(--verified-line);
-  color: var(--verified);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   font-size: 11.5px;
   font-weight: 700;
-  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.verified {
+  top: 10px;
+  left: 10px;
+  color: var(--verified);
+}
+.chip {
+  left: 10px;
+  bottom: 12px;
+  color: var(--text);
 }
 
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.track i {
+  display: block;
+  height: 100%;
+  background: var(--primary-soft);
+}
+
+/* 44px tap area, 30px visible circle. Sits ABOVE the stretched name button (z-index 2 vs 1). */
 .heart {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 34px;
-  height: 34px;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.heart span {
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--photo-chip);
-  color: var(--text);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
+  color: var(--text);
 }
-.heartOn {
+.heartOn span {
   color: var(--urgent);
 }
 .heartOn svg {
@@ -70,132 +112,111 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 2px;
 }
 
-.row1 {
+.titleRow {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
 .name {
   margin: 0;
-  font-size: 15px;
-  font-weight: 750;
-  line-height: 1.25;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.3;
 }
+.open {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--radius-control);
+}
+.open:focus-visible {
+  outline: none;
+}
+.open:focus-visible::after {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 3px;
+}
+
 .rating {
   flex: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 650;
 }
 .rating svg {
   fill: var(--text);
 }
 
 .sub {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12.5px;
+  margin: 0;
+  font-size: 13px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.trustLine {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: var(--primary-soft);
-}
-
-.priceRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .price {
-  font-size: 17px;
-  font-weight: 800;
+  margin: 2px 0 0;
+  font-size: 14.5px;
 }
-.price small {
-  font-size: 12px;
-  font-weight: 500;
+.price b {
+  font-weight: 750;
+}
+.price span {
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
-.pill {
+.signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.signal {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 10px;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 650;
   white-space: nowrap;
 }
-.soft {
+.warn {
+  background: var(--urgent-tint);
+  color: var(--urgent);
+}
+.good {
   background: var(--soft-tint);
   color: var(--primary-soft);
 }
-.muted {
+.neutral {
   background: var(--muted-tint);
   color: var(--text-muted);
-}
-
-.warn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: var(--urgent);
-}
-
-.progress {
-  height: 6px;
-  border-radius: 6px;
-  background: var(--muted-tint);
-  overflow: hidden;
-}
-.progress i {
-  display: block;
-  height: 100%;
-  background: var(--primary);
-  border-radius: 6px;
-}
-
-.countdown {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: var(--primary-soft);
-}
-
-.insight {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-.action {
-  margin-top: 2px;
-  height: 44px;
-  border-radius: var(--radius-control);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: 14px;
-  font-weight: 750;
 }

@@ -1,177 +1,107 @@
 "use client";
 
 // ============================================================================
-// This component's ONLY job: take ONE listing, show it as a card.
-// It does not know about grids, pages, filters, or where the data came from.
-// That separation is what lets you reuse this exact same card in a horizontal
-// scrolling row later AND in a plain grid, without changing this file at all.
+// ListingCard — ONE listing, shown the way Airbnb shows it: photo first, a few
+// short lines of text, no box, no button. The card's only job is to EARN A TAP.
+// The detail sheet's job (next step) is to close the decision.
+//
+// Fluid width on purpose: this card doesn't know whether it sits in a sideways
+// rail or a grid. Whatever wraps it decides the width.
 // ============================================================================
 
-import {
-  Heart,
-  ShieldCheck,
-  MapPin,
-  Star,
-  Wallet,
-  HardHat,
-  Clock,
-  Check,
-  UserRound,
-  TriangleAlert,
-} from "lucide-react";
+import { Heart, ShieldCheck, Star, HardHat, Clock } from "lucide-react";
 import type { Listing } from "./types";
+import { placeholderScene } from "./placeholder-scene";
 import styles from "./ListingCard.module.css";
 
 type Props = {
   listing: Listing;
-  /** Is this one currently saved/hearted? Comes from wherever "saved" state lives (see page.tsx). */
   saved?: boolean;
-  /** Called when the heart is tapped. The card doesn't manage saved state itself. */
   onToggleSave?: (id: string) => void;
-  /** Called when the card (or its main button) is tapped, to open the detail sheet. */
   onOpen?: (id: string) => void;
 };
 
-// ---- small helper functions used only inside this file ----
+const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
-const naira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
-
-/**
- * How many days from right now until `iso`. This is a SNAPSHOT calculated once when the card
- * renders — it is NOT a live-ticking clock. A real live countdown is a small upgrade for later,
- * intentionally left out here to keep this file's first version simple.
- */
+/** Whole days from now until `iso` (a snapshot at render time, not a live clock). */
 function daysUntil(iso: string): number {
-  const ms = new Date(iso).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / 86_400_000));
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
 }
+
+type Signal = { text: string; tone: "warn" | "good" | "neutral" };
 
 /**
- * Builds the one line of text about WHO you're dealing with and whether inspecting costs money.
- * This is the single most important trust signal on the whole card — real students say agent
- * fees are one of the most common ways they get taken advantage of.
+ * The trust facts students told us matter most: does LOOKING cost money, and are you being
+ * forced to pay years upfront. We show at most TWO, warnings first — a card that shows everything
+ * shows nothing. Everything else lives in the detail sheet.
  */
-function contactLine(listing: Listing): string | null {
-  const c = listing.contact;
-  if (!c) return null; // no contact info at all — show nothing rather than guess
+function getSignals(l: Listing): Signal[] {
+  if (l.kind === "rented") return [];
+  const out: Signal[] = [];
+  const fee = l.contact?.inspectionFee;
+  const years = l.paymentOptions?.requiresUpfrontYears;
 
-  if (c.inspectionFee === undefined) {
-    return "Ask about inspection fees before visiting"; // we genuinely don't know yet
-  }
-  if (c.inspectionFee === null) {
-    // Confirmed: no fee. Word it slightly differently depending on who you're dealing with.
-    return c.contactType === "agent"
-      ? "Through an agent · No inspection fee"
-      : c.contactType === "university-partner"
-        ? "Arranged with the university · No inspection fee"
-        : "Direct with the owner · No inspection fee";
-  }
-  // Confirmed: there IS a fee.
-  return `Through an agent · ${naira(c.inspectionFee.amount)} to inspect`;
+  if (fee) out.push({ text: `${naira(fee.amount)} to inspect`, tone: "warn" });
+  if (years) out.push({ text: `${years} yrs upfront`, tone: "warn" });
+  if (fee === null) out.push({ text: "No inspection fee", tone: "good" });
+  else if (fee === undefined && l.contact) out.push({ text: "Fee not confirmed", tone: "neutral" });
+
+  return out.slice(0, 2);
 }
 
-/** Picks the label, color, and icon for the small status pill, based on what kind of listing this is. */
-function statusPill(listing: Listing) {
-  switch (listing.kind) {
-    case "available":
-      return { label: "Available", tone: "soft" as const, icon: Check };
+/** The small glass chip on the photo — only for listings whose STATE matters at a glance. */
+function getPhotoChip(l: Listing): { text: string; icon: "hat" | "clock" | null } | null {
+  switch (l.kind) {
     case "construction":
-      return { label: "Under construction", tone: "soft" as const, icon: HardHat };
-    case "expiring":
-      return { label: "Frees up soon", tone: "soft" as const, icon: Clock };
+      return { text: l.constructionProgress != null ? `${l.constructionProgress}% built` : "Under construction", icon: "hat" };
+    case "expiring": {
+      if (!l.expiresAt) return { text: "Frees up soon", icon: "clock" };
+      const d = daysUntil(l.expiresAt);
+      return { text: `Opens in ${d} day${d === 1 ? "" : "s"}`, icon: "clock" };
+    }
     case "rented":
-      return { label: "Rented", tone: "muted" as const, icon: Check };
+      return { text: "Rented", icon: null };
+    default:
+      return null;
   }
 }
-
-// ---- the actual component ----
 
 export function ListingCard({ listing, saved, onToggleSave, onOpen }: Props) {
-  const line = contactLine(listing);
-  const pill = statusPill(listing);
-  const PillIcon = pill.icon;
-  const upfrontYears = listing.paymentOptions?.requiresUpfrontYears;
+  const signals = getSignals(listing);
+  const chip = getPhotoChip(listing);
+  const km = listing.location.distanceFromUniversityKm;
 
   return (
-    // Tapping ANYWHERE on the card opens the detail sheet.
-    <article className={styles.card} onClick={() => onOpen?.(listing.id)}>
-      {/* ---- photo area ---- */}
-      <div className={styles.photo}>
-        {/* Placeholder until real photo URLs exist. Swap this for a real <img> later. */}
-        <div className={styles.placeholder} aria-hidden="true">
-          <HardHat size={26} />
-        </div>
+    <article className={`${styles.card} ${listing.kind === "rented" ? styles.rented : ""}`}>
+      <div className={styles.media}>
+        {/* Real photo the moment one exists; otherwise a generated illustration. */}
+        <img
+          className={styles.img}
+          src={listing.images?.[0]?.url || placeholderScene(listing.id, listing.kind === "construction")}
+          alt=""
+          loading="lazy"
+          draggable={false}
+        />
 
         {listing.verified ? (
-          <span className={styles.badge}>
+          <span className={styles.verified}>
             <ShieldCheck size={12} aria-hidden />
             Verified
           </span>
         ) : null}
 
-        <button
-          type="button"
-          className={`${styles.heart} ${saved ? styles.heartOn : ""}`}
-          aria-label={saved ? `Remove ${listing.name} from saved` : `Save ${listing.name}`}
-          aria-pressed={!!saved}
-          onClick={(e) => {
-            // IMPORTANT: stop the click from also triggering the card's onOpen above.
-            e.stopPropagation();
-            onToggleSave?.(listing.id);
-          }}
-        >
-          <Heart size={18} />
-        </button>
-      </div>
-
-      {/* ---- text area ---- */}
-      <div className={styles.body}>
-        <div className={styles.row1}>
-          <h3 className={styles.name}>{listing.name}</h3>
-          {listing.rating ? (
-            <span className={styles.rating}>
-              <Star size={12} aria-hidden />
-              {listing.rating.toFixed(1)}
-            </span>
-          ) : null}
-        </div>
-
-        <div className={styles.sub}>
-          <MapPin size={13} aria-hidden />
-          {listing.location.area}
-          {listing.location.distanceFromUniversityKm != null
-            ? ` · ${listing.location.distanceFromUniversityKm} km from UNIDEL`
-            : null}
-        </div>
-
-        {line ? (
-          <div className={styles.trustLine}>
-            <UserRound size={13} aria-hidden />
-            {line}
-          </div>
+        {chip ? (
+          <span className={styles.chip}>
+            {chip.icon === "hat" ? <HardHat size={12} aria-hidden /> : null}
+            {chip.icon === "clock" ? <Clock size={12} aria-hidden /> : null}
+            {chip.text}
+          </span>
         ) : null}
 
-        <div className={styles.priceRow}>
-          <span className={styles.price}>
-            {naira(listing.pricing.amount)}
-            <small> / {listing.pricing.period}</small>
-          </span>
-          <span className={`${styles.pill} ${styles[pill.tone]}`}>
-            <PillIcon size={13} aria-hidden />
-            {pill.label}
-          </span>
-        </div>
-
-        {upfrontYears ? (
-          <div className={styles.warn}>
-            <TriangleAlert size={14} aria-hidden />
-            Asks for {upfrontYears} years upfront
-          </div>
-        ) : null}
-
+        {/* Construction progress as a thin line along the photo's bottom edge. */}
         {listing.kind === "construction" && listing.constructionProgress != null ? (
           <div
-            className={styles.progress}
+            className={styles.track}
             role="progressbar"
             aria-label="Construction progress"
             aria-valuemin={0}
@@ -181,33 +111,58 @@ export function ListingCard({ listing, saved, onToggleSave, onOpen }: Props) {
             <i style={{ width: `${listing.constructionProgress}%` }} />
           </div>
         ) : null}
+      </div>
 
-        {listing.kind === "expiring" && listing.expiresAt ? (
-          <div className={styles.countdown}>
-            <Wallet size={13} aria-hidden />
-            Frees up in {daysUntil(listing.expiresAt)} day
-            {daysUntil(listing.expiresAt) === 1 ? "" : "s"}
+      {/* The heart is a direct child of the card (NOT inside the photo box) so it always sits
+          above the tap-anywhere layer. Nested inside the photo box it gets trapped underneath. */}
+      <button
+        type="button"
+        className={`${styles.heart} ${saved ? styles.heartOn : ""}`}
+        aria-label={saved ? `Remove ${listing.name} from saved` : `Save ${listing.name}`}
+        aria-pressed={!!saved}
+        onClick={() => onToggleSave?.(listing.id)}
+      >
+        <span>
+          <Heart size={16} />
+        </span>
+      </button>
+
+      <div className={styles.body}>
+        <div className={styles.titleRow}>
+          <h3 className={styles.name}>
+            {/* The name is the real, keyboard-reachable button. Its ::after stretches over the
+                whole card, so tapping anywhere opens it — without nesting buttons inside buttons. */}
+            <button type="button" className={styles.open} onClick={() => onOpen?.(listing.id)}>
+              {listing.name}
+            </button>
+          </h3>
+          {listing.rating ? (
+            <span className={styles.rating}>
+              <Star size={12} aria-hidden />
+              {listing.rating.toFixed(1)}
+            </span>
+          ) : null}
+        </div>
+
+        <p className={styles.sub}>
+          {km != null ? `${km} km · ` : ""}
+          {listing.location.area}
+        </p>
+
+        <p className={styles.price}>
+          <b>{naira(listing.pricing.amount)}</b>
+          <span> / {listing.pricing.period}</span>
+        </p>
+
+        {signals.length > 0 ? (
+          <div className={styles.signals}>
+            {signals.map((s) => (
+              <span key={s.text} className={`${styles.signal} ${styles[s.tone]}`}>
+                {s.text}
+              </span>
+            ))}
           </div>
         ) : null}
-
-        {listing.insight ? <p className={styles.insight}>{listing.insight}</p> : null}
-
-        <button
-          type="button"
-          className={styles.action}
-          onClick={(e) => {
-            e.stopPropagation(); // same reason as the heart button above
-            onOpen?.(listing.id);
-          }}
-        >
-          {listing.kind === "construction"
-            ? "Follow build"
-            : listing.kind === "expiring"
-              ? "Follow room"
-              : listing.kind === "rented"
-                ? "See similar places"
-                : "View details"}
-        </button>
       </div>
     </article>
   );

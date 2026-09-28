@@ -2,11 +2,10 @@
   position: sticky;
   top: 0;
   z-index: var(--z-tabs);
-
   display: flex;
   justify-content: center;
-
   padding: 12px var(--gutter) 10px;
+  /* background: var(--bg); */
 }
 
 .row {
