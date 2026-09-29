@@ -37,6 +37,7 @@ import { LISTINGS } from "./components/home/listingcard/data";
 
 import { FilterBar } from "./components/filter/FilterBar";
 import { FilterSheet } from "./components/filter/FilterSheet";
+import { SearchSheet } from "./components/filter/SearchSheet";  
 import { applyFilters } from "./components/filter/filter-config";
 import { useFilters } from "./components/filter/FilterProvider";
 import { listingFilterFields } from "./components/filter/listing-fields";
@@ -344,7 +345,11 @@ export default function Page() {
           it needs no props.
           ================================================================ */}
 
-      <FilterSheet />
+     <FilterSheet />
+
+      {/* SEARCH SHEET: opens from the search icon. When a student taps a
+          result it calls setOpenId, so the Quick look above opens. */}
+      <SearchSheet onOpenListing={setOpenId} />
     </>
   );
 }

@@ -1,13 +1,27 @@
+/* One rail = a heading + a sideways row of cards.
+   min-width: 0 and max-width: 100% mean a rail can never push the page wider. */
 .section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  padding-top: 18px; /* space between one rail and the one above it */
 }
 
-.head {
+/* ------------------------------------------------------------- HEADING */
+.heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.headingCopy {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .title {
   margin: 0;
@@ -15,42 +29,152 @@
   font-weight: 800;
   letter-spacing: -0.01em;
 }
-.note {
+.reason {
+  margin: 0;
   font-size: 12.5px;
   color: var(--text-muted);
 }
 
-/* The sideways scroll. The negative margin + matching padding lets cards slide to the screen edge
-   on phone while the rest of the page keeps its normal side padding. */
-.rail {
+.controls {
+  flex: none;
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+}
+.action {
+  display: flex;
+  align-items: center;
+}
+
+/* Arrow buttons: for mouse and trackpad users only. Touch devices swipe, so
+   the arrows stay hidden there. Nothing here depends on :hover. */
+.arrow {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+
+.arrow:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.arrow:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- RAIL
+   The sideways scroll. The negative margin + matching padding lets cards
+   slide to the screen edge on phone while the rest of the page keeps its
+   normal side padding.
+
+   container-type: inline-size lets the cards below measure THIS rail (not the
+   whole window), so the count of visible cards stays right next to the
+   laptop side rail too. */
+.rail {
+  --rail-gap: 12px;
+  --rail-peek: 40px; /* how much of the NEXT card always shows */
+  --rail-fade: 28px; /* width of the edge fade */
+  --fade-left: 0px;
+  --fade-right: 0px;
+
+  container-type: inline-size;
+  display: flex;
+  gap: var(--rail-gap);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   margin: 0 calc(-1 * var(--gutter));
-  padding: 0 var(--gutter) 4px;
-  /* Without this, scroll-snap pulls the first card to the very screen edge and ignores the padding. */
-  scroll-padding: 0 var(--gutter);
+  /* A little vertical room so a card's focus ring is not clipped. */
+  padding: 4px var(--gutter) 8px;
+  /* Without this, scroll-snap pulls the first card to the very screen edge
+     and ignores the padding. */
+  scroll-padding-inline: var(--gutter);
+
+  /* The edge fade: it fades the cards themselves, which reads as
+     "the row continues". The two variables are switched on below only on the
+     sides that have more to scroll to. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--fade-left),
+    #000 calc(100% - var(--fade-right)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--fade-left),
+    #000 calc(100% - var(--fade-right)),
+    transparent 100%
+  );
 }
 .rail::-webkit-scrollbar {
   display: none;
 }
+/* Set from ListingRail.tsx: which sides have more content. */
+.rail[data-left="true"] {
+  --fade-left: var(--rail-fade);
+}
+.rail[data-right="true"] {
+  --fade-right: var(--rail-fade);
+}
 
-/* Phone: ~2 cards fit and a sliver of the third peeks in, which tells the eye "keep swiping". */
+/* --------------------------------------------------------------- CARDS
+   Each card's width is worked out so that N cards fit fully and exactly
+   --rail-peek pixels of the next one show. (100cqw is this rail's width
+   without its side padding, so the visible strip is 100cqw + the gutter.)
+
+     width = (100cqw + gutter - peek) / N - gap
+
+   The limits are the constraint: never narrower than 132px, never wider
+   than 240px, at any screen size. */
 .item {
   flex: 0 0 auto;
-  width: 172px;
+  width: 172px; /* fallback for browsers without container units */
   scroll-snap-align: start;
+  --n: 2; /* phone: two cards and a sliver of the third */
 }
-@media (min-width: 600px) {
+
+@supports (width: 1cqw) {
   .item {
-    width: 204px;
+    width: clamp(
+      132px,
+      calc((100cqw + var(--gutter) - var(--rail-peek)) / var(--n) - var(--rail-gap)),
+      240px
+    );
   }
 }
-@media (min-width: 1024px) {
+
+/* More room in the rail = more cards. These measure the rail's own width. */
+
+@container (min-width: 520px) {
   .item {
-    width: 216px;
+    --n: 3;
+  }
+}
+@container (min-width: 760px) {
+  .item {
+    --n: 4;
+  }
+}
+@container (min-width: 1000px) {
+  .item {
+    --n: 5;
   }
 }

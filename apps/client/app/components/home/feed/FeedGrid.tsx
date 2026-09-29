@@ -11,7 +11,7 @@ interface FeedGridProps {
   onOpen: (id: string) => void;
 }
 
-export default function FeedGrid({ listings, saved, onToggleSave, onOpen }: FeedGridProps) {
+default function FeedGrid({ listings, saved, onToggleSave, onOpen }: FeedGridProps) {
   return (
     <div className={styles.grid}>
       {listings.map((listing) => (

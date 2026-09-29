@@ -260,18 +260,7 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
     <div>
       {/* Only the search icon opens the sheet in "all" mode. A proper search
           experience comes in its own step; this keeps the icon useful. */}
-      {mode === "all" ? (
-        <div className={styles.searchWrap}>
-          <input
-            type="search"
-            className={styles.search}
-            placeholder="Search by name or area"
-            aria-label="Search by name or area"
-            value={filters.q}
-            onChange={(e) => setFilter("q", e.target.value)}
-          />
-        </div>
-      ) : null}
+
 
       <div className={styles.tabs} role="tablist" aria-label="Filter groups">
         {TABS.map((t, i) => (
