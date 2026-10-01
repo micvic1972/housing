@@ -136,7 +136,7 @@ export function FilterSheet() {
 
   return (
     <BottomSheet
-      open={sheetMode !== null}
+      open={sheetMode !== null && sheetMode !== "all"}
       onClose={closeSheet}
       title="Filters"
       label="Filters"

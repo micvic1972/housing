@@ -1,0 +1,58 @@
+model Listing {
+  id       String @id @default(cuid())
+  name     String
+  kind     String
+  status   String
+  roomType String
+
+  area       String
+  landmark   String?
+  distanceKm Float?
+
+  priceAmount   Int
+  priceCurrency String @default("NGN")
+  pricePeriod   String
+
+  amenities String[]
+
+  verified       Boolean  @default(false)
+  verifiedChecks String[]
+
+  rating      Float?
+  reviewCount Int?
+
+  contactType         String?
+  inspectionFeeStatus String  @default("unknown")
+  inspectionFeeAmount Int?
+
+  acceptedPeriods      String[]
+  requiresUpfrontYears Int?
+
+  hasSecurityPost Boolean?
+  isGatedCompound Boolean?
+
+  popularityScore      Int?
+  constructionProgress Int?
+  expiresAt            DateTime?
+  insight              String?
+
+  images ListingImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([area])
+  @@index([priceAmount])
+}
+
+model ListingImage {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String
+  position  Int
+
+  @@index([listingId])
+}
