@@ -1,3 +1,28 @@
+// ============================================================================
+// product-db: the database schema for UniNest.
+// One file, one place that describes what a "listing" is.
+// If a new fact about a listing is added in the client's types.ts,
+// it gets added here too, then a migration is run.
+// ============================================================================
+
+generator client {
+  // Prisma 7 style: the generated client lives in the repo, not in node_modules.
+  // product-service imports it from this path.
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // The real URL is read from .env by prisma7.config.ts (dotenv).
+  // It is not hard-coded here on purpose.
+ // url      = env("DATABASE_URL")
+}
+
+// A listing: one place a student could rent.
+// The nested objects from the client's types.ts (location, pricing, contact,
+// paymentOptions, safety) are flattened into columns here on purpose:
+// simpler queries, fewer joins, and only one university to worry about for now.
 model Listing {
   id       String @id @default(cuid())
   name     String
@@ -21,7 +46,9 @@ model Listing {
   rating      Float?
   reviewCount Int?
 
-  contactType         String?
+  // "owner" | "agent" | "university-partner"; null = not reported yet.
+  contactType String?
+  // "unknown" | "none" | "confirmed"; the honest-gap rule in one column.
   inspectionFeeStatus String  @default("unknown")
   inspectionFeeAmount Int?
 
@@ -46,6 +73,7 @@ model Listing {
   @@index([priceAmount])
 }
 
+// Images for a listing, ordered by position (0, 1, 2...).
 model ListingImage {
   id        String  @id @default(cuid())
   listingId String

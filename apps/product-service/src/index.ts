@@ -1,18 +1,43 @@
 // ============================================================================
-// product-service: the very first version.
-// It only does one thing: answer "are you alive?" at /health.
-// We add the listings endpoints after we confirm this works.
+// product-service: the main file.
+//
+// /health           -> "are you alive?"
+// /listings (GET)   -> list all listings
+// /listings (POST)  -> save a new listing
+//
+// CORS is what lets the admin (port 3001) and the student app (port 3000)
+// talk to this service (port 4000). Without it the browser blocks every
+// request, and the admin form says "Could not reach the API".
+// origin: true allows any website origin, which is fine while developing.
+// Lock it to the real admin and client addresses before going live.
+//
+// The database does not have to be running for /health to work. It does for
+// /listings, so you can start the service and check /health before opening
+// Docker.
 // ============================================================================
 
+import cors from "@fastify/cors";
 import Fastify from "fastify";
+import { listingRoutes } from "./routes/listing.route.js";
 
 // logger: true prints every request in the terminal, which helps while learning.
 const app = Fastify({ logger: true });
+
+// CORS must be registered BEFORE the routes. The methods list matters:
+// the plugin's default only allows GET, HEAD and POST, and we list them
+// explicitly so nothing surprises us later.
+await app.register(cors, {
+  origin: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+});
 
 // The health check. Every service gets one, so tools can ask "are you up?".
 app.get("/health", async () => {
   return { status: "ok", service: "product-service" };
 });
+
+// Attach the listing routes. register() is how Fastify groups them.
+await app.register(listingRoutes);
 
 // 4000 keeps it away from the student app (3000) and the admin (3001).
 const port = Number(process.env.PORT ?? 4000);
