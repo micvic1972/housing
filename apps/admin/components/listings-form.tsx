@@ -1,20 +1,9 @@
 "use client";
 
-// ============================================================================
-// apps/admin/components/listing-form.tsx
-// The admin form: type in one real listing and save it to the API.
-//
-// It sends the FLAT shape the database uses (area, priceAmount, ...), not the
-// nested shape the client app uses. Blank fields are left out of the request
-// on purpose, so the database keeps them as "not reported yet" (honest-gap rule).
-//
-// Dropdowns and checkboxes are kept in React state (not read from the form)
-// because shadcn's Select and Checkbox are custom controls. "unset" in a
-// dropdown means "not reported yet" and is turned into "leave it out" on save.
-// ============================================================================
+// Admin form: where you enter one real listing.
+// It sends a FLAT payload to the API (POST /listings).
 
-import { useState } from "react";
-
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +12,34 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Where the API lives. Comes from apps/admin/.env.local.
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API = "/api/admin";
+const MAX_IMAGES = 8;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+async function responseError(response: Response): Promise<string> {
+  const body: unknown = await response.json().catch(() => null);
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "error" in body &&
+    typeof body.error === "string"
+  ) {
+    return body.error;
+  }
+  return `Request failed (${response.status})`;
+}
+
+function createdListingId(value: unknown): string | null {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string"
+  ) {
+    return value.id;
+  }
+  return null;
+}
 
 const KINDS = ["available", "construction", "expiring", "rented"];
 const STATUSES = ["active", "coming-soon", "expiring-soon", "rented", "unavailable"];
@@ -33,12 +49,21 @@ const CONTACT_TYPES = ["owner", "agent", "university-partner"];
 const CHECKS = ["water", "power", "security", "in-person-visit"];
 const ACCEPTED_PERIODS = ["year", "session", "semester", "month"];
 
+// The three UNIDEL campuses: [value saved in the database, label you see].
+const CAMPUS_OPTIONS: [string, string][] = [
+  ["unset", "Not reported yet"],
+  ["alihame", "Alihame (main campus)"],
+  ["owa-oyibu", "Owa-Oyibu"],
+  ["owa-alero", "Owa-Alero"],
+];
+
 // The starting value of every dropdown.
 const DEFAULT_SELECTS: Record<string, string> = {
   kind: "available",
   status: "active",
   roomType: "single",
   pricePeriod: "year",
+  campus: "unset",
   contactType: "unset",
   inspectionFeeStatus: "unknown",
   hasSecurityPost: "unset",
@@ -124,13 +149,77 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
   const [verified, setVerified] = useState(false);
   const [checks, setChecks] = useState<string[]>([]);
   const [periods, setPeriods] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [pendingUpload, setPendingUpload] = useState<{
+    listingId: string;
+    files: File[];
+  } | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Short helper so each dropdown is one line below.
   const pick = (key: string) => (v: string) => setSel((s) => ({ ...s, [key]: v }));
 
+  async function sendImages(
+    listingId: string,
+    files: File[],
+  ): Promise<string | null> {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append("images", file, file.name));
+      const response = await fetch(
+        `${API}/listings/${encodeURIComponent(listingId)}/images`,
+        { method: "POST", body: formData },
+      );
+      return response.ok ? null : await responseError(response);
+    } catch {
+      return "Could not reach image storage. Check the service and try again.";
+    }
+  }
+
+  function resetForm(form?: HTMLFormElement) {
+    form?.reset();
+    setSel(DEFAULT_SELECTS);
+    setVerified(false);
+    setChecks([]);
+    setPeriods([]);
+    setImageFiles([]);
+    setPendingUpload(null);
+  }
+
+  async function retryImageUpload() {
+    if (!pendingUpload || uploadingImages) return;
+
+    setUploadingImages(true);
+    const error = await sendImages(
+      pendingUpload.listingId,
+      pendingUpload.files,
+    );
+    setUploadingImages(false);
+
+    if (error) {
+      setMessage({
+        ok: false,
+        text: `The listing was saved, but the photos are still pending: ${error}`,
+      });
+      return;
+    }
+
+    setMessage({ ok: true, text: "Listing and photos saved." });
+    resetForm(formRef.current ?? undefined);
+    onSaved?.();
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+    if (pendingUpload) {
+      setMessage({
+        ok: false,
+        text: "Finish the pending photo upload before saving another listing.",
+      });
+      return;
+    }
     const fd = new FormData(form);
 
     // Empty box = undefined = left out of the request.
@@ -153,6 +242,8 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
       status: sel.status,
       roomType: sel.roomType,
       area: text("area"),
+      // "unset" = left out, so the database keeps "not reported yet".
+      campus: sel.campus === "unset" ? undefined : sel.campus,
       landmark: text("landmark"),
       distanceKm: num("distanceKm"),
       priceAmount: num("priceAmount"),
@@ -191,31 +282,54 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setMessage({ ok: false, text: `Not saved: ${body.error ?? res.status}` });
+        setMessage({ ok: false, text: `Not saved: ${await responseError(res)}` });
+        return;
+      }
+
+      const created: unknown = await res.json();
+      const listingId = createdListingId(created);
+      if (!listingId) {
+        setMessage({
+          ok: false,
+          text: "The listing was saved, but its ID was missing, so the photos could not be uploaded.",
+        });
+        onSaved?.();
+        return;
+      }
+      onSaved?.();
+
+      if (imageFiles.length > 0) {
+        setPendingUpload({ listingId, files: imageFiles });
+        setUploadingImages(true);
+        const uploadError = await sendImages(listingId, imageFiles);
+        setUploadingImages(false);
+        if (uploadError) {
+          setMessage({
+            ok: false,
+            text: `Listing saved, but photos are pending: ${uploadError}`,
+          });
+          return;
+        }
+        setMessage({
+          ok: true,
+          text: `Listing and ${imageFiles.length} photo${imageFiles.length === 1 ? "" : "s"} saved.`,
+        });
       } else {
         setMessage({ ok: true, text: "Saved." });
-        // Clear the boxes AND the state-based controls.
-        form.reset();
-        setSel(DEFAULT_SELECTS);
-        setVerified(false);
-        setChecks([]);
-        setPeriods([]);
-        onSaved?.();
       }
+      resetForm(form);
     } catch {
-      // Usually means the API (port 4000) or Docker is not running.
       setMessage({ ok: false, text: "Could not reach the API. Is it running?" });
     } finally {
       setSaving(false);
     }
   }
 
-  // Stops number boxes changing value when you scroll over them.
+  // Input sizing: 16px text on phones so iOS does not zoom in.
   const num16 = "min-h-11 text-base md:min-h-9 md:text-sm";
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>The place</CardTitle>
@@ -236,6 +350,9 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
           <Field label="Area *">
             <Input name="area" required className={num16} />
           </Field>
+          <Field label="Campus it is near" hint="Leave as 'Not reported yet' if you are not sure">
+            <Pick value={sel.campus} onChange={pick("campus")} options={CAMPUS_OPTIONS} />
+          </Field>
           <Field label="Landmark">
             <Input name="landmark" className={num16} />
           </Field>
@@ -245,6 +362,61 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
           <Field label="Amenities" hint="Separate with commas, e.g. water, generator, wifi">
             <Input name="amenities" className={num16} />
           </Field>
+          <Field
+            label="Property photos"
+            hint="JPEG, PNG, or WebP. Up to 8 photos, 5 MB each."
+          >
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              className="min-h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:font-medium"
+              disabled={pendingUpload !== null || uploadingImages}
+              multiple
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.files ?? []);
+                const tooLarge = selected.some(
+                  (file) => file.size > MAX_IMAGE_BYTES,
+                );
+                if (selected.length > MAX_IMAGES || tooLarge) {
+                  setImageFiles([]);
+                  event.currentTarget.value = "";
+                  setMessage({
+                    ok: false,
+                    text: `Choose up to ${MAX_IMAGES} photos, each no larger than 5 MB.`,
+                  });
+                  return;
+                }
+                setImageFiles(selected);
+                setMessage(null);
+              }}
+              type="file"
+            />
+          </Field>
+          {imageFiles.length > 0 ? (
+            <div className="md:col-span-2">
+              <p className="text-sm font-medium">
+                {imageFiles.length} photo{imageFiles.length === 1 ? "" : "s"} selected
+              </p>
+              <ul className="mt-2 grid gap-1 text-sm text-muted-foreground">
+                {imageFiles.map((file) => (
+                  <li key={`${file.name}-${file.lastModified}`}>
+                    {file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {pendingUpload ? (
+            <div className="md:col-span-2">
+              <button
+                className="min-h-11 rounded-md border px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
+                disabled={uploadingImages}
+                onClick={retryImageUpload}
+                type="button"
+              >
+                {uploadingImages ? "Uploading photos…" : "Retry photo upload"}
+              </button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

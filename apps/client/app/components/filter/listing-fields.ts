@@ -27,11 +27,24 @@ const ROOM_LABELS: Record<RoomType, string> = {
 };
 
 export function listingFilterFields(item: Listing): FilterFields {
+  const inspectionFee = item.contact?.inspectionFee;
+  const upfrontYears = item.paymentOptions?.requiresUpfrontYears;
+
   return {
     price: item.pricing.amount,
     room: ROOM_LABELS[item.roomType],
     area: item.location.area,
     verified: item.verified,
-    text: `${item.name} ${item.location.area} ${item.insight ?? ""}`,
+    text: `${item.name} ${item.location.area} ${item.location.campus ?? ""} ${item.insight ?? ""}`,
+    km: item.location.distanceFromUniversityKm,
+    owner: item.contact?.contactType
+      ? item.contact.contactType === "owner"
+      : undefined,
+    noFee:
+      inspectionFee === undefined ? undefined : inspectionFee === null,
+    lowUpfront:
+      upfrontYears === undefined ? undefined : upfrontYears <= 1,
+    gated: item.safety?.isGatedCompound,
+    available: item.kind === "available" && item.status === "active",
   };
 }

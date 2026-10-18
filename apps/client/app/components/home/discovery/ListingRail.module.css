@@ -142,21 +142,22 @@
 
      width = (100cqw + gutter - peek) / N - gap
 
-   The limits are the constraint: never narrower than 132px, never wider
-   than 240px, at any screen size. */
+   BIGGER CARDS (changed): a phone now shows ONE large card plus a sliver of
+   the next, so a student can really see the room. Limits: never narrower
+   than 200px, never wider than 320px, at any screen size. */
 .item {
   flex: 0 0 auto;
-  width: 172px; /* fallback for browsers without container units */
+  width: 280px; /* fallback for browsers without container units */
   scroll-snap-align: start;
-  --n: 2; /* phone: two cards and a sliver of the third */
+  --n: 1; /* phone: one big card and a sliver of the second */
 }
 
 @supports (width: 1cqw) {
   .item {
     width: clamp(
-      132px,
+      200px,
       calc((100cqw + var(--gutter) - var(--rail-peek)) / var(--n) - var(--rail-gap)),
-      240px
+      320px
     );
   }
 }
@@ -165,16 +166,16 @@
 
 @container (min-width: 520px) {
   .item {
-    --n: 3;
+    --n: 2;
   }
 }
 @container (min-width: 760px) {
   .item {
-    --n: 4;
+    --n: 3;
   }
 }
 @container (min-width: 1000px) {
   .item {
-    --n: 5;
+    --n: 4;
   }
 }

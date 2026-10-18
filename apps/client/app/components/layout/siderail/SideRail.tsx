@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Map, ClipboardList, User, MoreHorizontal, type LucideIcon } from "lucide-react";
+import {
+  Home,
+  Map,
+  ClipboardList,
+  MessagesSquare,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { NAV_ITEMS, type NavId } from "../../../config/nav-items";
 import { cx } from "../../../lib/cx";
 import base from "./SideRail.module.css";
@@ -11,9 +18,9 @@ import wide from "./SideRail.wide.module.css";
 const ICONS: Record<NavId, LucideIcon> = {
   home: Home,
   map: Map,
-  inspections: ClipboardList,
+  inspection: ClipboardList,
+  messages: MessagesSquare,
   profile: User,
-  more: MoreHorizontal,
 };
 
 function isActive(pathname: string, href: string) {
@@ -33,6 +40,7 @@ export default function SideRail() {
           <Link
             key={item.id}
             href={item.href}
+            prefetch={item.requiresAuth ? false : undefined}
             className={cx(base.item, wide.item)}
             aria-current={active ? "page" : undefined}
           >

@@ -21,7 +21,7 @@
 
 import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import BottomSheet from "../ui/bottomsheet/BottomSheet";
-import { LISTINGS } from "../home/listingcard/data";
+import { useListings } from "../../lib/listings-provider";
 import {
   AREA_OPTIONS,
   BUDGET_OPTIONS,
@@ -125,10 +125,15 @@ export function FilterSheet() {
     useFilters();
 
   // Live count: the same filtering the feed uses, so they always agree.
-  const count = applyFilters(LISTINGS, filters, listingFilterFields).length;
+  const { listings, status, reload } = useListings();
+  const count = applyFilters(listings, filters, listingFilterFields).length;
 
   const showLabel =
-    count === 0
+    status === "loading"
+      ? "Loading places…"
+      : status === "error"
+        ? "Try loading again"
+        : count === 0
       ? "No places match"
       : count === 1
         ? "Show 1 place"
@@ -150,7 +155,12 @@ export function FilterSheet() {
           >
             Clear all
           </button>
-          <button type="button" className={styles.show} onClick={closeSheet}>
+          <button
+            type="button"
+            className={styles.show}
+            disabled={status === "loading"}
+            onClick={status === "error" ? reload : closeSheet}
+          >
             {showLabel}
           </button>
         </div>

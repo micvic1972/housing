@@ -33,6 +33,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import Link from "next/link";
 import { Check, Heart, Minus, Star } from "lucide-react";
 import type { Listing } from "./types";
 import { placeholderScene } from "./placeholder-scene";
@@ -54,7 +55,13 @@ function walkMinutes(km: number) {
 // HERO PHOTOS
 // ----------------------------------------------------------------------------
 
-function Hero({ listing }: { listing: Listing }) {
+function Hero({
+  listing,
+  presentation,
+}: {
+  listing: Listing;
+  presentation: "sheet" | "page";
+}) {
   const isBuild = listing.kind === "construction";
 
   // Same rule as the card: real photo if there is a url, otherwise draw the
@@ -69,6 +76,7 @@ function Hero({ listing }: { listing: Listing }) {
       key: img.id,
       alt: img.alt,
       src: img.url || placeholderScene(listing.id, isBuild, i),
+      fallback: placeholderScene(listing.id, isBuild, i),
     }));
   }, [listing.id, listing.images, listing.name, isBuild]);
 
@@ -114,11 +122,13 @@ function Hero({ listing }: { listing: Listing }) {
     <div
       className={`${styles.heroWrap} ${
         listing.kind === "rented" ? styles.rented : ""
-      }`}
+      } ${presentation === "page" ? styles.heroWrapPage : ""}`}
     >
       <div
         ref={scrollerRef}
-        className={styles.hero}
+        className={`${styles.hero} ${
+          presentation === "page" ? styles.heroPage : ""
+        }`}
         onScroll={handleScroll}
         aria-label="Photos"
       >
@@ -127,13 +137,17 @@ function Hero({ listing }: { listing: Listing }) {
             key={s.key}
             className={`${styles.heroSlide} ${
               count === 1 ? styles.heroSolo : ""
-            }`}
+            } ${presentation === "page" ? styles.heroSlidePage : ""}`}
           >
             <img
               className={styles.heroImg}
               src={s.src}
               alt={s.alt}
               draggable={false}
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = s.fallback;
+              }}
             />
           </div>
         ))}
@@ -252,7 +266,11 @@ function TrustTab({ listing }: { listing: Listing }) {
         <dl className={styles.rows}>
           <div className={styles.row}>
             <dt>Contact</dt>
-            <dd>{CONTACT_LABELS[listing.contact.contactType]}</dd>
+            <dd>
+              {listing.contact.contactType
+                ? CONTACT_LABELS[listing.contact.contactType]
+                : "Not reported yet"}
+            </dd>
           </div>
           <div className={styles.row}>
             <dt>Inspection fee</dt>
@@ -442,7 +460,13 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "location", label: "Location" },
 ];
 
-export default function ListingDetail({ listing }: { listing: Listing }) {
+export default function ListingDetail({
+  listing,
+  presentation = "sheet",
+}: {
+  listing: Listing;
+  presentation?: "sheet" | "page";
+}) {
   const [tab, setTab] = useState<TabId>("overview");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const uid = useId();
@@ -465,12 +489,26 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
   }
 
   return (
-    <div className={styles.detail}>
-      <Hero listing={listing} />
+    <div
+      className={`${styles.detail} ${
+        presentation === "page" ? styles.detailPage : ""
+      }`}
+    >
+      <Hero listing={listing} presentation={presentation} />
 
       {/* Info block */}
-      <div className={styles.info}>
-        <h2 className={styles.name}>{listing.name}</h2>
+      <div
+        className={`${styles.info} ${
+          presentation === "page" ? styles.infoPage : ""
+        }`}
+      >
+        {presentation === "page" ? (
+          <h1 className={`${styles.name} ${styles.namePage}`}>
+            {listing.name}
+          </h1>
+        ) : (
+          <h2 className={styles.name}>{listing.name}</h2>
+        )}
         <p className={styles.meta}>
           {km != null ? `${km} km · ` : ""}
           {listing.location.area}
@@ -482,6 +520,12 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
             </>
           ) : null}
         </p>
+        {presentation === "page" ? (
+          <p className={styles.pricePage}>
+            <strong>₦{listing.pricing.amount.toLocaleString("en-NG")}</strong>
+            <span> / {listing.pricing.period}</span>
+          </p>
+        ) : null}
 
         {signals.length > 0 ? (
           <div className={styles.signals}>
@@ -498,7 +542,13 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
       </div>
 
       {/* Sticky tab bar */}
-      <div className={styles.tabs} role="tablist" aria-label="Listing details">
+      <div
+        className={`${styles.tabs} ${
+          presentation === "page" ? styles.tabsPage : ""
+        }`}
+        role="tablist"
+        aria-label="Listing details"
+      >
         {TABS.map((t, i) => (
           <button
             key={t.id}
@@ -522,7 +572,9 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
       {/* The active tab's content */}
       <div
-        className={styles.panel}
+        className={`${styles.panel} ${
+          presentation === "page" ? styles.panelPage : ""
+        }`}
         role="tabpanel"
         id={`${uid}-panel-${tab}`}
         aria-labelledby={`${uid}-tab-${tab}`}
@@ -537,9 +589,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 }
 
 // ----------------------------------------------------------------------------
-// THE FOOTER: heart + the main action. The label depends on the listing kind.
-// The main action has no booking flow behind it yet, so it does nothing for
-// now (we do not fake behaviour).
+// THE FOOTER: save the listing or open its shareable detail page.
 // ----------------------------------------------------------------------------
 
 export function ListingDetailFooter({
@@ -551,13 +601,6 @@ export function ListingDetailFooter({
   saved: boolean;
   onToggleSave: (id: string) => void;
 }) {
-  const label =
-    listing.kind === "construction"
-      ? "Follow this build"
-      : listing.kind === "rented"
-        ? "See similar places"
-        : "Book an inspection"; // available and expiring
-
   return (
     <div className={styles.footerRow}>
       <button
@@ -572,9 +615,12 @@ export function ListingDetailFooter({
         <Heart size={20} aria-hidden />
       </button>
 
-      <button type="button" className={styles.primary}>
-        {label}
-      </button>
+      <Link
+        href={`/listings/${encodeURIComponent(listing.id)}`}
+        className={styles.primary}
+      >
+        View full listing
+      </Link>
     </div>
   );
 }

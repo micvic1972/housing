@@ -1,10 +1,15 @@
-// Prisma 7 moved the database connection URL out of schema.prisma and into
-// this config file. The schema describes the shape; this file describes
-// how to connect. `env` is Prisma's own helper for reading environment
-// variables — it is clearer than process.env and it fails loudly if the
-// variable is missing, which is what we want.
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { config } from "dotenv";
+import { defineConfig } from "prisma/config";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { validateDatabaseUrl } from "./src/database-url.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(here, ".env") });
+
+const directUrl = process.env.DIRECT_URL;
+const datasourceUrl = directUrl || process.env.DATABASE_URL;
+const datasourceName = directUrl ? "DIRECT_URL" : "DATABASE_URL";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -12,6 +17,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: validateDatabaseUrl(datasourceUrl, datasourceName),
   },
 });

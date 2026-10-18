@@ -16,6 +16,20 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Client authentication
+
+The Home, Map, and listing detail routes are public. Inspection, Messages, and
+Profile require a signed-in Clerk user. For local sign-in, configure these
+variables in the ignored `apps/client/.env.local` file and restart the client:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_API_URL`
+
+Use the API base URL already configured for your local product-service. Do not
+commit `.env.local` or share key values. When Clerk is not configured, protected
+routes redirect to a setup message rather than exposing the placeholder pages.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

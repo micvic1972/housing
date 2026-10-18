@@ -9,6 +9,8 @@
 // The four "kinds" our five discovery tabs care about.
 export type ListingKind = "available" | "construction" | "expiring" | "rented";
 
+export type FacilityId = "water" | "power" | "wifi" | "security";
+
 export type RoomType =
   | "single"
   | "self-contained"
@@ -27,6 +29,7 @@ export type ListingStatus =
 // Where the place is. Grouped together because these facts always travel together.
 export interface ListingLocation {
   area: string;
+  campus?: string;
   landmark?: string;
   /** Distance from UNIDEL, in kilometres. Students treat distance as a second price tag. */
   distanceFromUniversityKm?: number;
@@ -50,7 +53,7 @@ export interface ListingImage {
 // "inspection fee" just to view a place. Surfacing this clearly on the card
 // is one of the most important trust signals in the whole app.
 export interface ListingContact {
-  contactType: "owner" | "agent" | "university-partner";
+  contactType?: "owner" | "agent" | "university-partner";
   /**
    * undefined = we don't know yet (show "ask before visiting")
    * null      = confirmed there is NO fee

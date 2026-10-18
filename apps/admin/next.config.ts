@@ -1,7 +1,17 @@
+
+
+
+
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "://unsplash.com" },
+    ],
+  },
+  //  Move this out of experimental and place it at the root level:
+   allowedDevOrigins: ["192.168.18.11", "192.168.18.3", "localhost:3000"]
 };
 
 export default nextConfig;

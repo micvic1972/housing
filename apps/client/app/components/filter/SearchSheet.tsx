@@ -16,15 +16,13 @@
 // and it uses the SAME applyFilters + listingFilterFields, so the rows here
 // always agree with the feed and with "Show N places" in the Filters sheet.
 //
-// Tapping a row does not navigate anywhere. It calls onOpenListing(id), and
-// page.tsx (which owns openId) opens the Quick look. Card = closed lid,
-// sheet = opened drawer: same listing, never a new page.
+// Tapping a row opens the shareable listing page through the owning page.
 // ============================================================================
 
 import { useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 import BottomSheet from "../ui/bottomsheet/BottomSheet";
-import { LISTINGS } from "../home/listingcard/data";
+import { useListings } from "../../lib/listings-provider";
 import { placeholderScene } from "../home/listingcard/placeholder-scene";
 import type { Listing } from "../home/listingcard/types";
 import { AREA_OPTIONS, applyFilters } from "./filter-config";
@@ -58,7 +56,8 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
   const query = filters.q.trim();
 
   // Same filtering the feed uses, so numbers and rows always agree.
-  const results = applyFilters(LISTINGS, filters, listingFilterFields);
+  const { listings, status, reload } = useListings();
+  const results = applyFilters(listings, filters, listingFilterFields);
 
   function openResult(id: string) {
     // The search was used to FIND one place. Clear the text so the feed
@@ -93,8 +92,10 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
         query={query}
         raw={filters.q}
         results={results}
+        listingsStatus={status}
         onChange={(v) => setFilter("q", v)}
         onOpenResult={openResult}
+        onRetry={reload}
       />
     </BottomSheet>
   );
@@ -110,14 +111,18 @@ function SearchPanel({
   query,
   raw,
   results,
+  listingsStatus,
   onChange,
   onOpenResult,
+  onRetry,
 }: {
   query: string;
   raw: string;
   results: Listing[];
+  listingsStatus: "loading" | "ready" | "error";
   onChange: (value: string) => void;
   onOpenResult: (id: string) => void;
+  onRetry: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -167,8 +172,28 @@ function SearchPanel({
         ) : null}
       </div>
 
+      {listingsStatus === "loading" ? (
+        <p className={styles.hint} role="status">
+          Loading places…
+        </p>
+      ) : null}
+      {listingsStatus === "error" ? (
+        <div className={styles.empty} role="alert">
+          <p className={styles.hint}>
+            Search is unavailable because places could not be loaded.
+          </p>
+          <button
+            type="button"
+            className={styles.emptyBtn}
+            onClick={onRetry}
+          >
+            Try loading again
+          </button>
+        </div>
+      ) : null}
+
       {/* STATE 1: nothing typed. Suggestions, so the sheet is never blank. */}
-      {!query ? (
+      {listingsStatus === "ready" && !query ? (
         <>
           <h3 className={styles.groupTitle}>Try an area</h3>
           <div className={styles.chips}>
@@ -190,7 +215,7 @@ function SearchPanel({
       ) : null}
 
       {/* STATE 2: typed, and something matches. */}
-      {query && results.length > 0 ? (
+      {listingsStatus === "ready" && query && results.length > 0 ? (
         <>
           {/* aria-live so screen readers hear the count change as you type. */}
           <p className={styles.count} aria-live="polite">
@@ -207,7 +232,7 @@ function SearchPanel({
       ) : null}
 
       {/* STATE 3: typed, nothing matches. Say so plainly and offer a way out. */}
-      {query && results.length === 0 ? (
+      {listingsStatus === "ready" && query && results.length === 0 ? (
         <div className={styles.empty} aria-live="polite">
           <p className={styles.emptyTitle}>No places match “{query}”</p>
           <p className={styles.hint}>
@@ -244,8 +269,12 @@ function ResultRow({
   // Same rule as the card: a real photo if there is a url, else the
   // placeholder for photo position 0.
   const first = listing.images?.[0];
-  const src =
-    first?.url || placeholderScene(listing.id, listing.kind === "construction", 0);
+  const fallback = placeholderScene(
+    listing.id,
+    listing.kind === "construction",
+    0,
+  );
+  const src = first?.url || fallback;
 
   return (
     <button
@@ -253,7 +282,16 @@ function ResultRow({
       className={styles.row}
       onClick={() => onOpen(listing.id)}
     >
-      <img className={styles.thumb} src={src} alt="" draggable={false} />
+      <img
+        className={styles.thumb}
+        src={src}
+        alt=""
+        draggable={false}
+        onError={(event) => {
+          event.currentTarget.onerror = null;
+          event.currentTarget.src = fallback;
+        }}
+      />
 
       <span className={styles.text}>
         <span className={styles.name}>{listing.name}</span>

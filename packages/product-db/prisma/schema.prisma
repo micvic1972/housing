@@ -14,9 +14,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // The real URL is read from .env by prisma7.config.ts (dotenv).
-  // It is not hard-coded here on purpose.
- // url      = env("DATABASE_URL")
+  // Connection URLs are supplied by prisma7.config.ts from the product-db
+  // package environment or the process environment.
 }
 
 // A listing: one place a student could rent.
@@ -30,7 +29,10 @@ model Listing {
   status   String
   roomType String
 
-  area       String
+   area       String
+  // Which UNIDEL campus this place is near: "alihame" | "owa-oyibu" | "owa-alero".
+  // null = not reported yet (honest-gap rule), so old listings stay valid.
+  campus     String?
   landmark   String?
   distanceKm Float?
 

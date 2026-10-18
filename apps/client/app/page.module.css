@@ -1,0 +1,156 @@
+.loadingState {
+  padding: 24px 0 40px;
+}
+
+.stateHeading {
+  margin-bottom: 16px;
+}
+
+.stateHeading h2,
+.stateCard h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.stateHeading p,
+.stateCard > p:not(.stateEyebrow) {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.skeletonCard {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.skeletonPhoto,
+.skeletonTitle,
+.skeletonMeta,
+.skeletonPrice {
+  background: linear-gradient(
+    100deg,
+    var(--muted-tint) 20%,
+    var(--soft-tint) 38%,
+    var(--muted-tint) 56%
+  );
+  background-size: 220% 100%;
+  animation: feed-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonPhoto {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-control);
+}
+
+.skeletonTitle {
+  width: 72%;
+  height: 16px;
+  border-radius: 6px;
+}
+
+.skeletonMeta {
+  width: 54%;
+  height: 12px;
+  border-radius: 6px;
+}
+
+.skeletonPrice {
+  width: 42%;
+  height: 15px;
+  border-radius: 6px;
+}
+
+.stateCard {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 28px 0;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.stateEyebrow {
+  margin: 0;
+  color: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stateAction,
+.stateActionSecondary {
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stateAction {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.stateActionSecondary {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.stateAction:focus-visible,
+.stateActionSecondary:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+
+@keyframes feed-shimmer {
+  to {
+    background-position-x: -220%;
+  }
+}
+
+@media (max-width: 900px) {
+  .skeletonGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .skeletonGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 12px;
+  }
+
+  .stateCard {
+    margin: 20px 0;
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonPhoto,
+  .skeletonTitle,
+  .skeletonMeta,
+  .skeletonPrice {
+    animation: none;
+  }
+}

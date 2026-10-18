@@ -1,0 +1,267 @@
+.page {
+  min-height: 100vh;
+  color: var(--text);
+}
+
+.pageHeader {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-tabs);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.pageHeaderInner {
+  width: 100%;
+  max-width: 1120px;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 0 auto;
+  padding: 8px 28px;
+}
+
+.back {
+  width: fit-content;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-soft);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pageTitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  flex: 1;
+}
+
+.shareButton {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.shareButton:hover {
+  border-color: var(--primary-soft);
+}
+
+.shareButton:focus-visible,
+.back:focus-visible,
+.retryButton:focus-visible,
+.backToBrowse:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+
+.content {
+  width: 100%;
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 30px 28px 80px;
+}
+
+.feedback {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detail {
+  min-width: 0;
+}
+
+.message {
+  max-width: 620px;
+  margin: 48px auto;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.2);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.message h1 {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: clamp(22px, 4vw, 28px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.message p {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.retryButton,
+.backToBrowse {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--primary);
+  color: var(--on-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.skeleton {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.skeletonHero,
+.skeletonTitle,
+.skeletonMeta,
+.skeletonPrice,
+.skeletonTabs,
+.skeletonLine,
+.skeletonLineShort {
+  background: linear-gradient(
+    100deg,
+    var(--muted-tint) 20%,
+    var(--soft-tint) 38%,
+    var(--muted-tint) 56%
+  );
+  background-size: 220% 100%;
+  animation: loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonHero {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.skeletonCopy {
+  display: grid;
+  gap: 16px;
+  padding: 26px;
+}
+
+.skeletonTitle {
+  width: min(62%, 420px);
+  height: 34px;
+  border-radius: 8px;
+}
+
+.skeletonMeta {
+  width: min(44%, 280px);
+  height: 16px;
+  border-radius: 6px;
+}
+
+.skeletonPrice {
+  width: min(32%, 210px);
+  height: 27px;
+  margin-top: 4px;
+  border-radius: 6px;
+}
+
+.skeletonTabs {
+  width: 100%;
+  height: 46px;
+  margin-top: 12px;
+  border-radius: 8px;
+}
+
+.skeletonLine,
+.skeletonLineShort {
+  height: 16px;
+  border-radius: 6px;
+}
+
+.skeletonLineShort {
+  width: 72%;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes loading-shimmer {
+  to {
+    background-position-x: -220%;
+  }
+}
+
+@media (max-width: 640px) {
+  .pageHeaderInner {
+    min-height: 58px;
+    padding: 7px 16px;
+  }
+  .content {
+    padding: 22px 16px 52px;
+  }
+  .message {
+    margin: 28px 0;
+    padding: 24px;
+  }
+  .skeletonCopy {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonHero,
+  .skeletonTitle,
+  .skeletonMeta,
+  .skeletonPrice,
+  .skeletonTabs,
+  .skeletonLine,
+  .skeletonLineShort {
+    animation: none;
+  }
+}

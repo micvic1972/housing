@@ -1,15 +1,21 @@
-export type NavId = "home" | "map" | "inspections" | "profile" | "more";
+export type NavId = "home" | "map" | "inspection" | "messages" | "profile";
 
 export interface NavItem {
   id: NavId;
   label: string;
   href: string;
+  requiresAuth?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Home", href: "/" },
   { id: "map", label: "Map", href: "/map" },
-  { id: "inspections", label: "Inspections", href: "/inspections" },
-  { id: "profile", label: "Profile", href: "/profile" },
-  { id: "more", label: "More", href: "/more" },
+  {
+    id: "inspection",
+    label: "Inspection",
+    href: "/inspection",
+    requiresAuth: true,
+  },
+  { id: "messages", label: "Messages", href: "/messages", requiresAuth: true },
+  { id: "profile", label: "Profile", href: "/profile", requiresAuth: true },
 ];

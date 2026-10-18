@@ -1,7 +1,7 @@
 "use client";
 
 import type { Listing } from "../listingcard/types";
-import ListingCard from "../listingcard/ListingCard";
+import { ListingCard } from "../listingcard/ListingCard";
 import styles from "./FeedGrid.module.css";
 
 interface FeedGridProps {
@@ -11,7 +11,7 @@ interface FeedGridProps {
   onOpen: (id: string) => void;
 }
 
-default function FeedGrid({ listings, saved, onToggleSave, onOpen }: FeedGridProps) {
+export default function FeedGrid({ listings, saved, onToggleSave, onOpen }: FeedGridProps) {
   return (
     <div className={styles.grid}>
       {listings.map((listing) => (

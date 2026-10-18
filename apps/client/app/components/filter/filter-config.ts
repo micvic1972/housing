@@ -108,7 +108,10 @@ export function applyFilters<T>(items: readonly T[], f: Filters, pick: (item: T)
     const x = pick(item);
     if (f.verified && !x.verified) return false;
     if (f.room && x.room !== f.room) return false;
-    if (f.area && x.area !== f.area) return false;
+    if (
+      f.area &&
+      x.area.trim().toLowerCase() !== f.area.trim().toLowerCase()
+    ) return false;
     if (band && !band.matches(x.price)) return false;
     if (f.maxKm !== null && (x.km === undefined || x.km > f.maxKm)) return false;
     if (f.ownerOnly && !x.owner) return false;

@@ -17,6 +17,7 @@
 // ============================================================================
 
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import Fastify from "fastify";
 import { listingRoutes } from "./routes/listing.route.js";
 
@@ -29,6 +30,13 @@ const app = Fastify({ logger: true });
 await app.register(cors, {
   origin: true,
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+});
+
+await app.register(multipart, {
+  limits: {
+    files: 8,
+    fileSize: 5 * 1024 * 1024,
+  },
 });
 
 // The health check. Every service gets one, so tools can ask "are you up?".

@@ -29,6 +29,13 @@
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
 }
+.heroPage {
+  aspect-ratio: 16 / 9;
+  max-height: 480px;
+  padding: 0;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
 .hero::-webkit-scrollbar {
   display: none;
 }
@@ -44,6 +51,12 @@
 }
 .heroSolo {
   flex-basis: 100%;
+}
+.heroSlidePage {
+  flex-basis: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
 }
 .heroImg {
   display: block;
@@ -78,6 +91,9 @@
 .info {
   padding: 14px var(--gutter) 12px;
 }
+.infoPage {
+  padding: 26px 0 24px;
+}
 .name {
   margin: 0;
   font-size: 19px;
@@ -85,10 +101,26 @@
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
+.namePage {
+  font-size: clamp(26px, 3.4vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
 .meta {
   margin: 4px 0 0;
   font-size: 13.5px;
   color: var(--text-muted);
+}
+.pricePage {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.pricePage strong {
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
 }
 .star {
   display: inline-block;
@@ -137,6 +169,12 @@
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+.tabsPage {
+  position: static;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  border-bottom-color: var(--border);
+}
 .tab {
   flex: 1;
   min-width: 0;
@@ -153,6 +191,11 @@
   cursor: pointer;
   touch-action: manipulation;
 }
+.tabsPage .tab {
+  flex: 0 0 auto;
+  min-width: 104px;
+  padding: 0 16px;
+}
 .tabOn {
   color: var(--text);
   border-bottom-color: var(--primary-soft);
@@ -166,6 +209,10 @@
 /* --------------------------------------------------------------- PANEL */
 .panel {
   padding: 4px var(--gutter) 28px;
+}
+.panelPage {
+  max-width: 760px;
+  padding: 12px 0 48px;
 }
 .sectionTitle {
   margin: 18px 0 8px;
@@ -329,6 +376,9 @@
   flex: 1;
   min-width: 0;
   height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: var(--radius-control);
   background: var(--primary);
@@ -336,6 +386,7 @@
   font: inherit;
   font-size: 15px;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -343,4 +394,31 @@
 .primary:focus-visible {
   outline: 2px solid var(--primary-soft);
   outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .heroPage {
+    aspect-ratio: 4 / 3;
+    max-height: none;
+    border-radius: var(--radius-control);
+  }
+
+  .infoPage {
+    padding: 22px 0 20px;
+  }
+
+  .tabsPage {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabsPage::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabsPage .tab {
+    flex: 1 0 auto;
+    min-width: 88px;
+    padding: 0 12px;
+  }
 }

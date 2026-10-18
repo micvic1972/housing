@@ -9,22 +9,14 @@
 // sidebar. On phone and iPad the sidebar is a drawer, opened from the menu
 // button in the top bar (that button lives in layout.tsx).
 //
-// The footer account block is a placeholder: there is no login yet, so
-// Settings and Sign out are disabled instead of pretending to work.
+// The footer exposes Clerk's account menu after the server verifies an
+// allowlisted administrator session.
 // ============================================================================
 
-import { Building2 } from "lucide-react";
+import { Building2, X } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -37,18 +29,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 // The menu links. Each has an icon, because in the collapsed strip the icon
 // is all that shows. Adding a page later is a one-line change here.
 const NAV = [{ label: "Listings", href: "/", icon: Building2 }];
 
-// Placeholder until real login exists.
-const ACCOUNT = { name: "Admin", note: "Not signed in yet", initials: "A" };
-
 export function AppSidebar() {
   // Used to highlight the page the admin is currently on.
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar collapsible="icon">
@@ -60,6 +51,14 @@ export function AppSidebar() {
         <span className="truncate text-base font-semibold group-data-[collapsible=icon]:hidden">
           UniNest admin
         </span>
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setOpenMobile(false)}
+          className="inline-flex size-11 items-center justify-center rounded-md hover:bg-sidebar-accent md:hidden"
+        >
+          <X aria-hidden="true" className="size-5" />
+        </button>
         <SidebarTrigger className="hidden md:inline-flex" />
       </SidebarHeader>
 
@@ -89,32 +88,21 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Pinned to the bottom of the sidebar, always visible. */}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="min-h-11">
-                  {/* Round badge with the initial, since no avatar image exists yet. */}
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                    {ACCOUNT.initials}
-                  </span>
-                  <span className="flex min-w-0 flex-col text-left leading-tight">
-                    <span className="truncate text-sm font-medium">{ACCOUNT.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{ACCOUNT.note}</span>
-                  </span>
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-
-              {/* Opens upward because the button sits at the bottom of the screen. */}
-              <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuLabel>{ACCOUNT.name}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>Settings (coming soon)</DropdownMenuItem>
-                <DropdownMenuItem disabled>Sign out (needs login first)</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex min-h-11 items-center gap-3 px-2">
+              {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
+                <UserButton />
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Sign-in setup required
+                </span>
+              )}
+              <span className="text-sm font-medium group-data-[collapsible=icon]:hidden">
+                Account
+              </span>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

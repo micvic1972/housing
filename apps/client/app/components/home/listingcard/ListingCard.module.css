@@ -41,6 +41,8 @@
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+  color: inherit;
+  text-decoration: none;
 }
 .scroller::-webkit-scrollbar {
   display: none;
@@ -141,21 +143,32 @@
   transform: scale(1.25);
 }
 
-/* "Tap to open a quick look" signifier: up-arrow in a glass circle. */
-.arrow {
+/* Explicit preview control; the photo itself navigates to the full page. */
+.quickLook {
   position: absolute;
   right: 10px;
   bottom: 10px;
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
+  z-index: 3;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
   background: var(--photo-chip);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   color: var(--text);
-  pointer-events: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.quickLook:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
 }
 
 /* 44px tap area, 30px visible circle. Top layer (z-index 3). */
@@ -221,8 +234,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
-  touch-action: manipulation;
+  color: inherit;
+  text-decoration: none;
 }
 /* The stretched tap area over the whole card. Layer 1, so the photo (2) and
    heart (3) sit above it. */

@@ -1,5 +1,3 @@
-import type { Listing } from "../components/home/listingcard/types";
-
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
@@ -8,7 +6,7 @@ const HOUR = 3_600_000;
 // always start counting down live, just like the original mockup.
 const now = Date.now();
 
-export const MOCK_LISTINGS: Listing[] = [
+export const MOCK_LISTINGS = [
   { id: "a1", seed: 1, name: "Amber Court Lodges", area: "Main Gate Axis", walk: 4, dist: 0.3, price: 220000, room: "Self-contain", fac: ["water", "power", "wifi", "security"], verified: true, vdate: "12 Sep", status: "AVAILABLE", rating: 4.9, pop: 96, kind: "standard", insight: "Shortest walk to campus among verified lodges" },
   { id: "a2", seed: 2, name: "Palm Nest Hostel", area: "Behind Campus", walk: 7, dist: 0.6, price: 150000, room: "Single room", fac: ["water", "power", "security"], verified: true, vdate: "9 Sep", status: "ALMOST_FULL", left: 3, rating: 4.8, pop: 91, kind: "standard", insight: "Rooms here are filling fast this week" },
   { id: "a3", seed: 3, name: "Blue Ridge Studios", area: "Agbor Road", walk: 9, dist: 0.8, price: 260000, room: "Studio", fac: ["water", "power", "wifi", "security"], verified: false, status: "COMING_SOON", pop: 88, kind: "construction", progress: 68, ready: "Nov 2026", insight: "Follow the build and hear the moment rooms open" },

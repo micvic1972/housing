@@ -7,8 +7,6 @@ export const LISTINGS: Listing[] = [
 
     kind: "available",
     status: "active",
-
-    propertyType: "self-contained",
     roomType: "self-contained",
 
     location: {
@@ -49,9 +47,8 @@ export const LISTINGS: Listing[] = [
     reviewCount: 32,
 
     popularityScore: 92,
-    recommendationScore: 95,
 
-    summary: "Popular student accommodation close to UNIDEL.",
+    insight: "Popular student accommodation close to UNIDEL.",
   },
 
   {
@@ -60,8 +57,6 @@ export const LISTINGS: Listing[] = [
 
     kind: "available",
     status: "active",
-
-    propertyType: "hostel",
     roomType: "single",
 
     location: {
@@ -96,9 +91,8 @@ export const LISTINGS: Listing[] = [
     reviewCount: 21,
 
     popularityScore: 88,
-    recommendationScore: 90,
 
-    summary: "Affordable option within easy reach of campus.",
+    insight: "Affordable option within easy reach of campus.",
   },
 
   {
@@ -107,8 +101,6 @@ export const LISTINGS: Listing[] = [
 
     kind: "available",
     status: "active",
-
-    propertyType: "apartment",
     roomType: "one-bedroom",
 
     location: {
@@ -143,9 +135,8 @@ export const LISTINGS: Listing[] = [
     reviewCount: 48,
 
     popularityScore: 96,
-    recommendationScore: 94,
 
-    summary: "Highly rated accommodation with modern facilities.",
+    insight: "Highly rated accommodation with modern facilities.",
   },
 
   {
@@ -154,8 +145,6 @@ export const LISTINGS: Listing[] = [
 
     kind: "construction",
     status: "coming-soon",
-
-    propertyType: "apartment",
     roomType: "self-contained",
 
     location: {
@@ -186,11 +175,10 @@ export const LISTINGS: Listing[] = [
     verified: true,
 
     popularityScore: 72,
-    recommendationScore: 76,
 
     constructionProgress: 68,
 
-    summary: "New accommodation currently under construction.",
+    insight: "New accommodation currently under construction.",
   },
 
   {
@@ -199,8 +187,6 @@ export const LISTINGS: Listing[] = [
 
     kind: "expiring",
     status: "expiring-soon",
-
-    propertyType: "hostel",
     roomType: "shared",
 
     location: {
@@ -234,11 +220,10 @@ export const LISTINGS: Listing[] = [
     reviewCount: 16,
 
     popularityScore: 80,
-    recommendationScore: 83,
 
     expiresAt: "2026-10-15",
 
-    summary: "A room becoming available soon.",
+    insight: "A room becoming available soon.",
   },
 ];
 

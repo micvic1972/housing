@@ -20,7 +20,7 @@ export type Filters = {
   gated: boolean;
   /** Hide places that are already rented. */
   hideRented: boolean;
-  /** Free-text search over name and area. */
+  /** Free-text search over name, area, campus, and insight. */
   q: string;
 };
 
@@ -42,7 +42,7 @@ export type FilterFields = {
   room: string;
   area: string;
   verified: boolean;
-  /** Text the search box looks inside, e.g. `${name} ${area}`. */
+  /** Text the search box looks inside, including campus when reported. */
   text: string;
   /** Walk from the gate in km. undefined = unknown. */
   km?: number;

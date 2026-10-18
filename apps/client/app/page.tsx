@@ -24,16 +24,16 @@
 // ============================================================================
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import DiscoveryTabs from "./components/home/discovery/DiscoveryTabs";
 import ListingRail from "./components/home/discovery/ListingRail";
 import BottomSheet from "./components/ui/bottomsheet/BottomSheet";
-
-import { ListingCard } from "./components/home/listingcard/ListingCard";
+import { useListings } from "./lib/listings-provider";
 import ListingDetail, {
   ListingDetailFooter,
 } from "./components/home/listingcard/ListingDetail";
-import { LISTINGS } from "./components/home/listingcard/data";
+import { ListingCard } from "./components/home/listingcard/ListingCard";
 
 import { FilterBar } from "./components/filter/FilterBar";
 import { FilterSheet } from "./components/filter/FilterSheet";
@@ -41,10 +41,12 @@ import { SearchSheet } from "./components/filter/SearchSheet";
 import { applyFilters } from "./components/filter/filter-config";
 import { useFilters } from "./components/filter/FilterProvider";
 import { listingFilterFields } from "./components/filter/listing-fields";
+import styles from "./page.module.css";
 
 import type { FeedId } from "./config/feeds";
 
 export default function Page() {
+  const router = useRouter();
   // --------------------------------------------------------------------------
   // Which discovery tab is currently selected?
   // --------------------------------------------------------------------------
@@ -69,8 +71,8 @@ export default function Page() {
   // --------------------------------------------------------------------------
   // Get the current filters selected by the FilterBar.
   // --------------------------------------------------------------------------
-
-  const { filters } = useFilters();
+  const { filters, clearFilters } = useFilters();
+  const { listings: LISTINGS, status, reload } = useListings();
 
   // --------------------------------------------------------------------------
   // FIRST LAYER OF FILTERING
@@ -193,6 +195,12 @@ export default function Page() {
     );
   }
 
+  const hasForYouSections =
+    nearTheGate.length > 0 ||
+    fiveStar.length > 0 ||
+    underConstruction.length > 0 ||
+    freeingUpSoon.length > 0;
+
   return (
     <>
       {/* ================================================================
@@ -224,8 +232,92 @@ export default function Page() {
             Because every discovery section is derived from
             filteredListings, the selected filters affect the rails too.
             ================================================================ */}
-
         <FilterBar />
+
+        {status === "loading" ? (
+          <section className={styles.loadingState} role="status">
+            <div className={styles.stateHeading}>
+              <h2>Finding places near UNIDEL</h2>
+              <p>Loading the latest listings…</p>
+            </div>
+            <div className={styles.skeletonGrid} aria-hidden="true">
+              {Array.from({ length: 4 }, (_, index) => (
+                <div className={styles.skeletonCard} key={index}>
+                  <div className={styles.skeletonPhoto} />
+                  <div className={styles.skeletonTitle} />
+                  <div className={styles.skeletonMeta} />
+                  <div className={styles.skeletonPrice} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {status === "error" ? (
+          <section className={styles.stateCard} role="alert">
+            <p className={styles.stateEyebrow}>Connection problem</p>
+            <h2>Places couldn’t be loaded</h2>
+            <p>
+              Check that the API is running and this device can reach it, then
+              try again.
+            </p>
+            <button
+              className={styles.stateAction}
+              type="button"
+              onClick={reload}
+            >
+              Try again
+            </button>
+          </section>
+        ) : null}
+        {status === "ready" && LISTINGS.length === 0 ? (
+          <section className={styles.stateCard} role="status">
+            <p className={styles.stateEyebrow}>Around UNIDEL</p>
+            <h2>No places listed yet</h2>
+            <p>New accommodation will appear here when it is published.</p>
+            <button
+              className={styles.stateActionSecondary}
+              type="button"
+              onClick={reload}
+            >
+              Check again
+            </button>
+          </section>
+        ) : null}
+        {status === "ready" &&
+        LISTINGS.length > 0 &&
+        filteredListings.length === 0 ? (
+          <section className={styles.stateCard} role="status">
+            <p className={styles.stateEyebrow}>Search results</p>
+            <h2>No places match your search</h2>
+            <p>
+              Try changing your search or removing some filters.
+            </p>
+            <button
+              type="button"
+              className={styles.stateAction}
+              onClick={clearFilters}
+            >
+              Clear filters
+            </button>
+          </section>
+        ) : null}
+        {status === "ready" &&
+        filteredListings.length > 0 &&
+        activeFeedId !== "for-you" &&
+        tabListings.length === 0 ? (
+          <section className={styles.stateCard} role="status">
+            <p className={styles.stateEyebrow}>Discovery feed</p>
+            <h2>Nothing in this feed yet</h2>
+            <p>There are matching places, but none fit this category.</p>
+            <button
+              type="button"
+              className={styles.stateActionSecondary}
+              onClick={() => setActiveFeedId("for-you")}
+            >
+              Browse all matching places
+            </button>
+          </section>
+        ) : null}
 
         {/* ================================================================
             FOR YOU
@@ -236,7 +328,11 @@ export default function Page() {
             the student several small answers to different housing needs.
             ================================================================ */}
 
-        {activeFeedId === "for-you" ? (
+        {status === "ready" &&
+        LISTINGS.length > 0 &&
+        filteredListings.length > 0 &&
+        activeFeedId === "for-you" &&
+        hasForYouSections ? (
           <>
             <ListingRail
               title="Near the gate"
@@ -274,8 +370,11 @@ export default function Page() {
               onOpen={setOpenId}
             />
           </>
-        ) : (
-          /* ================================================================
+        ) : status === "ready" &&
+          LISTINGS.length > 0 &&
+          filteredListings.length > 0 &&
+          (activeFeedId !== "for-you" || !hasForYouSections) ? (
+          /* ===   =============================================================
              OTHER FEEDS
 
              These remain a normal responsive grid for now.
@@ -303,7 +402,7 @@ export default function Page() {
               />
             ))}
           </div>
-        )}
+        ) : null}
       </main>
 
       {/* ================================================================
@@ -348,8 +447,12 @@ export default function Page() {
      <FilterSheet />
 
       {/* SEARCH SHEET: opens from the search icon. When a student taps a
-          result it calls setOpenId, so the Quick look above opens. */}
-      <SearchSheet onOpenListing={setOpenId} />
+          result it opens the shareable listing detail page. */}
+      <SearchSheet
+        onOpenListing={(id) =>
+          router.push(`/listings/${encodeURIComponent(id)}`)
+        }
+      />
     </>
   );
 }

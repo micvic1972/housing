@@ -14,8 +14,8 @@
 //      slide left a little and back, teaching that the photo can be swiped.
 //   5. Layering: the photo sits ABOVE the stretched name overlay, so swipes
 //      reach the carousel. Tapping the photo (a click, which a swipe does not
-//      produce) opens the sheet. The name button is still the keyboard and
-//      screen-reader way to open.
+//      produce) opens the full listing page. A separate quick-look control
+//      keeps the preview available.
 //
 // HYDRATION RULE (unchanged): the server and browser must render the same
 // HTML. So no Date.now(), no random values while rendering. The peek and the
@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   Star,
 } from "lucide-react";
+import Link from "next/link";
 import type { Listing } from "./types";
 import { placeholderScene } from "./placeholder-scene";
 import styles from "./ListingCard.module.css";
@@ -146,13 +147,14 @@ export function ListingCard({
       key: img.id,
       alt: img.alt,
       src: img.url || placeholderScene(listing.id, isBuild, i),
+      fallback: placeholderScene(listing.id, isBuild, i),
     }));
   }, [listing.id, listing.images, listing.name, isBuild]);
 
   const count = slides.length;
 
   const cardRef = useRef<HTMLElement>(null);
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLAnchorElement>(null);
   const rafRef = useRef(0);
 
   // Which photo is showing (drives the active dot).
@@ -258,13 +260,12 @@ export function ListingCard({
           ==================================================================== */}
 
       <div className={styles.media}>
-        {/* The swipeable strip. A click here (a tap, NOT a swipe) opens the
-            sheet. Keyboard users use the name button below instead. */}
-        <div
+        {/* The swipeable strip opens the full page when tapped. */}
+        <Link
           ref={scrollerRef}
+          href={`/listings/${encodeURIComponent(listing.id)}`}
           className={styles.scroller}
           onScroll={handleScroll}
-          onClick={() => onOpen?.(listing.id)}
         >
           {slides.map((s) => (
             <div key={s.key} className={styles.slide}>
@@ -274,14 +275,17 @@ export function ListingCard({
                 alt={s.alt}
                 loading="lazy"
                 draggable={false}
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = s.fallback;
+                }}
               />
             </div>
           ))}
-        </div>
+        </Link>
 
-        {/* Everything below is decoration on top of the photo. None of it is
-            tappable, so pointer-events: none (in CSS) lets swipes and taps
-            pass straight through to the strip underneath. */}
+        {/* These trust and carousel indicators are decorative, so their
+            pointer-events: none styling lets swipes reach the photo link. */}
 
         {listing.verified ? (
           <span className={styles.verified}>
@@ -323,10 +327,15 @@ export function ListingCard({
           </div>
         ) : null}
 
-        {/* Up-arrow: points up because the sheet rises from below. */}
-        <span className={styles.arrow} aria-hidden>
+        <button
+          type="button"
+          className={styles.quickLook}
+          aria-label={`Quick look at ${listing.name}`}
+          onClick={() => onOpen?.(listing.id)}
+        >
           <ArrowUp size={16} />
-        </span>
+          <span>Quick look</span>
+        </button>
       </div>
 
       {/* ====================================================================
@@ -354,15 +363,14 @@ export function ListingCard({
       <div className={styles.body}>
         <div className={styles.titleRow}>
           <h3 className={styles.name}>
-            {/* The real, keyboard-accessible button. CSS stretches its tap
-                area over the card, but the photo and heart sit above it. */}
-            <button
-              type="button"
+            {/* The link stretches over the card; the photo and controls sit above it. */}
+            <Link
+              href={`/listings/${encodeURIComponent(listing.id)}`}
               className={styles.open}
-              onClick={() => onOpen?.(listing.id)}
+              aria-label={`View full listing: ${listing.name}`}
             >
               {listing.name}
-            </button>
+            </Link>
           </h3>
 
           {listing.rating ? (
