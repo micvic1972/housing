@@ -9,7 +9,7 @@ import { prisma } from "@repo/product-db";
 import {
   deleteListingImageObjects,
   listingImageObjectKey,
-} from "../lib/supabase-storage.js";
+} from "../../lib/supabase-storage.js";
 
 // -----------------------------------------------------------------------------
 // POST /listings validation
@@ -580,6 +580,48 @@ export async function getListing(
     return reply.code(500).send({
       error: "Could not fetch listing",
     });
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PATCH /listings/:id
+// -----------------------------------------------------------------------------
+
+export async function updateListing(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const body = request.body as Record<string, unknown>;
+  const data = { ...body };
+
+  if (typeof data.expiresAt === "string") {
+    data.expiresAt = new Date(data.expiresAt);
+  }
+
+  try {
+    const listing = await prisma.listing.update({
+      where: { id: request.params.id },
+      data: data as never,
+      include: {
+        images: {
+          orderBy: { position: "asc" },
+        },
+      },
+    });
+
+    return reply.send({ data: listing });
+  } catch (err) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      err.code === "P2025"
+    ) {
+      return reply.code(404).send({ error: "Listing not found" });
+    }
+
+    request.log.error(err);
+    return reply.code(500).send({ error: "Could not update listing" });
   }
 }
 

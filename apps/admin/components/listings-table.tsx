@@ -32,7 +32,13 @@ type ListingsResponse = {
   };
 };
 
-export default function ListingsTable({ refreshKey }: { refreshKey: number }) {
+export default function ListingsTable({
+  refreshKey,
+  onEdit,
+}: {
+  refreshKey: number;
+  onEdit: (id: string) => void;
+}) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -101,7 +107,7 @@ export default function ListingsTable({ refreshKey }: { refreshKey: number }) {
             <TableHead>Kind</TableHead>
             <TableHead>Price (NGN)</TableHead>
             <TableHead>Verified</TableHead>
-            <TableHead className="text-right">Action</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -117,15 +123,26 @@ export default function ListingsTable({ refreshKey }: { refreshKey: number }) {
               <TableCell>{r.verified ? "Yes" : "No"}</TableCell>
 
               <TableCell className="text-right">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="min-h-11 md:min-h-8"
-                  disabled={deletingId === r.id}
-                  onClick={() => handleDelete(r)}
-                >
-                  {deletingId === r.id ? "Deleting..." : "Delete"}
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 md:min-h-8"
+                    disabled={deletingId !== null}
+                    onClick={() => onEdit(r.id)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="min-h-11 md:min-h-8"
+                    disabled={deletingId === r.id}
+                    onClick={() => handleDelete(r)}
+                  >
+                    {deletingId === r.id ? "Deleting..." : "Delete"}
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

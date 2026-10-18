@@ -57,7 +57,10 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
 
     Promise.resolve()
       .then(() =>
-        fetch(`${apiBase()}/listings`, { signal: controller.signal }),
+        fetch(`${apiBase()}/listings`, {
+          signal: controller.signal,
+          cache: "no-store",
+        }),
       )
       .then((res) => {
         if (!res.ok) {
@@ -90,7 +93,16 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [reload, reloadVersion]);
 
-  return <ListingsContext.Provider value={value}>{children}</ListingsContext.Provider>;
+  useEffect(() => {
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, [reload]);
+
+  return (
+    <ListingsContext.Provider value={value}>
+      {children}
+    </ListingsContext.Provider>
+  );
 }
 
 export function useListings() {

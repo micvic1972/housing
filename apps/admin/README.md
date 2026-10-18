@@ -19,10 +19,17 @@ service-role key stay server-side.
    `apps/product-service/.env`. The party list must contain the exact trusted
    admin app origin, for example `http://localhost:3001`; add the production
    admin origin when deployed.
-5. Add `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY` to the
+5. In production, set `CORS_ALLOWED_ORIGINS` in the product-service
+   environment to the exact client and admin browser origins, comma-separated
+   with no paths (for example, `https://client.example.com,https://admin.example.com`).
+   Production startup fails if this allowlist is missing or malformed.
+   Development keeps LAN testing enabled.
+6. Add `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY` to the
    product-service environment. Do not use a `NEXT_PUBLIC_` variable for that
-   key. `SUPABASE_STORAGE_BUCKET` is optional.
-6. For the database package, configure `DATABASE_URL` and `DIRECT_URL` in
+   key. Current `sb_secret_` API keys and legacy service-role keys are
+   supported. `SUPABASE_STORAGE_BUCKET` is optional; if omitted, the service
+   uses `uninest-listing-images`.
+7. For the database package, configure `DATABASE_URL` and `DIRECT_URL` in
    `packages/product-db/.env` using the provider's pooled and direct
    PostgreSQL URLs. Never store these values in source control.
 
@@ -34,6 +41,10 @@ The service creates the public `uninest-listing-images` bucket on the first
 successful upload when it does not exist. Listing photos are public to read;
 only Clerk-authenticated allowlisted administrators can upload them. Accepted
 files are JPEG, PNG, or WebP, at most 5 MB each and 8 images per listing.
+
+The saved-listings table supports editing listing fields through the
+administrator-protected `PATCH /listings/:id` API. Existing photos are
+preserved by an edit; photo replacement or removal is not part of this form.
 
 ## Run locally
 

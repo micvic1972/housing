@@ -13,6 +13,22 @@ const ACCEPTED_PERIODS = ["year", "session", "semester", "month"];
 const FEE_STATUSES = ["unknown", "none", "confirmed"];
 // The three UNIDEL campuses a listing can be near.
 const CAMPUSES = ["alihame", "owa-oyibu", "owa-alero"];
+const NULLABLE_KEYS = new Set([
+  "campus",
+  "landmark",
+  "distanceKm",
+  "rating",
+  "reviewCount",
+  "contactType",
+  "inspectionFeeAmount",
+  "requiresUpfrontYears",
+  "hasSecurityPost",
+  "isGatedCompound",
+  "popularityScore",
+  "constructionProgress",
+  "expiresAt",
+  "insight",
+]);
 
 // The only fields a listing may contain. Anything else is refused.
 const ALLOWED_KEYS = new Set([
@@ -37,6 +53,14 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
   // Unknown fields are refused so nobody can sneak in an id or a date.
   const unknown = Object.keys(b).filter((key) => !ALLOWED_KEYS.has(key));
   if (unknown.length > 0) problems.push(`Unknown fields: ${unknown.join(", ")}`);
+  if (Object.keys(b).length === 0) {
+    problems.push("At least one listing field is required");
+  }
+  for (const [key, value] of Object.entries(b)) {
+    if (value === null && !NULLABLE_KEYS.has(key)) {
+      problems.push(`${key} cannot be null`);
+    }
+  }
 
   // Text that must not be blank.
   for (const key of ["name", "area"]) {

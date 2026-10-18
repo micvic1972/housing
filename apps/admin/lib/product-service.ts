@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminBearerToken } from "./admin-authorization";
 
 type ProxyOptions = {
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: BodyInit;
   contentType?: string;
 };

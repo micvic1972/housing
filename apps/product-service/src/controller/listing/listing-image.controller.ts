@@ -6,8 +6,10 @@ import {
   isValidImageBytes,
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_IMAGES,
+  StorageConfigurationError,
+  StorageRequestError,
   uploadListingImage,
-} from "../lib/supabase-storage.js";
+} from "../../lib/supabase-storage.js";
 
 type ListingImageRequest = FastifyRequest<{
   Params: { id: string };
@@ -28,6 +30,33 @@ function errorCode(error: unknown): string | undefined {
     return error.code;
   }
   return undefined;
+}
+
+function storageFailureMessage(error: unknown): string {
+  if (error instanceof StorageConfigurationError) {
+    return error.message;
+  }
+  if (error instanceof StorageRequestError) {
+    const upstream = error.upstreamMessage.toLowerCase();
+    if (error.statusCode === 401) {
+      return "Supabase rejected SUPABASE_SERVICE_ROLE_KEY. Verify it is the current server-side key for this project.";
+    }
+    if (error.statusCode === 403) {
+      return "SUPABASE_SERVICE_ROLE_KEY does not have permission for this Storage operation. Verify the server-side key and Storage access.";
+    }
+    if (
+      error.operation.startsWith("bucket") ||
+      upstream.includes("bucket") ||
+      upstream.includes("object not found")
+    ) {
+      return `The configured storage bucket was not found. Check SUPABASE_STORAGE_BUCKET (current default: uninest-listing-images) or create that public bucket in Supabase.`;
+    }
+    if (error.statusCode === 404) {
+      return "Supabase did not recognize the configured project endpoint. Verify SUPABASE_URL.";
+    }
+    return `Supabase Storage ${error.operation} failed (HTTP ${error.statusCode}). Check SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET.`;
+  }
+  return "Supabase Storage could not be reached. Check SUPABASE_URL and the product-service network connection.";
 }
 
 export async function uploadListingImages(
@@ -82,15 +111,14 @@ export async function uploadListingImages(
   } catch (error) {
     const code = errorCode(error);
     request.log.warn(error);
-    if (
-      code === "FST_REQ_FILE_TOO_LARGE" ||
-      code === "FST_FILES_LIMIT"
-    ) {
+    if (code === "FST_REQ_FILE_TOO_LARGE" || code === "FST_FILES_LIMIT") {
       return reply.code(413).send({
         error: "Upload up to 8 images, each no larger than 5 MB",
       });
     }
-    return reply.code(400).send({ error: "Could not read the uploaded images" });
+    return reply
+      .code(400)
+      .send({ error: "Could not read the uploaded images" });
   }
 
   if (invalidImage || files.length === 0) {
@@ -107,19 +135,36 @@ export async function uploadListingImages(
   const stored: Array<{ key: string; url: string }> = [];
   try {
     for (const file of files) {
-      stored.push(
-        await uploadListingImage(id, file.contentType, file.bytes),
-      );
+      stored.push(await uploadListingImage(id, file.contentType, file.bytes));
     }
   } catch (error) {
-    request.log.error(error);
+    if (error instanceof StorageRequestError) {
+      request.log.error(
+        {
+          statusCode: error.statusCode,
+          operation: error.operation,
+          message: error.upstreamMessage,
+        },
+        "Supabase Storage request failed",
+      );
+    } else if (error instanceof StorageConfigurationError) {
+      request.log.error(
+        { setting: error.setting, message: error.message },
+        "Supabase Storage configuration error",
+      );
+    } else {
+      request.log.error(
+        { message: error instanceof Error ? error.message : "Unknown error" },
+        "Supabase Storage upload failed",
+      );
+    }
     try {
       await deleteListingImageObjects(stored.map((image) => image.key));
     } catch (cleanupError) {
       request.log.error(cleanupError);
     }
     return reply.code(503).send({
-      error: "Image storage is unavailable. The listing was not changed.",
+      error: `Image storage is unavailable; no image records were added. ${storageFailureMessage(error)}`,
     });
   }
 
@@ -149,7 +194,3 @@ export async function uploadListingImages(
 
   return reply.code(201).send({ data: { count: stored.length } });
 }
-  
-
-
-

@@ -16,6 +16,38 @@ const API = "/api/admin";
 const MAX_IMAGES = 8;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
+export type ListingFormValues = {
+  id: string;
+  name: string;
+  kind: string;
+  status: string;
+  roomType: string;
+  area: string;
+  campus: string | null;
+  landmark: string | null;
+  distanceKm: number | null;
+  priceAmount: number;
+  priceCurrency: string;
+  pricePeriod: string;
+  amenities: string[];
+  verified: boolean;
+  verifiedChecks: string[];
+  rating: number | null;
+  reviewCount: number | null;
+  contactType: string | null;
+  inspectionFeeStatus: string;
+  inspectionFeeAmount: number | null;
+  acceptedPeriods: string[];
+  requiresUpfrontYears: number | null;
+  hasSecurityPost: boolean | null;
+  isGatedCompound: boolean | null;
+  popularityScore: number | null;
+  constructionProgress: number | null;
+  expiresAt: string | null;
+  insight: string | null;
+  images: { id: string; url: string; alt: string; position: number }[];
+};
+
 async function responseError(response: Response): Promise<string> {
   const body: unknown = await response.json().catch(() => null);
   if (
@@ -142,13 +174,51 @@ function CheckGroup({
   );
 }
 
-export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
+export default function ListingForm({
+  initialListing,
+  onSaved,
+  onCancel,
+}: {
+  initialListing?: ListingFormValues;
+  onSaved?: () => void;
+  onCancel?: () => void;
+}) {
+  const editing = initialListing !== undefined;
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const [sel, setSel] = useState<Record<string, string>>(DEFAULT_SELECTS);
-  const [verified, setVerified] = useState(false);
-  const [checks, setChecks] = useState<string[]>([]);
-  const [periods, setPeriods] = useState<string[]>([]);
+  const [sel, setSel] = useState<Record<string, string>>(() =>
+    initialListing
+      ? {
+          ...DEFAULT_SELECTS,
+          kind: initialListing.kind,
+          status: initialListing.status,
+          roomType: initialListing.roomType,
+          pricePeriod: initialListing.pricePeriod,
+          campus: initialListing.campus ?? "unset",
+          contactType: initialListing.contactType ?? "unset",
+          inspectionFeeStatus: initialListing.inspectionFeeStatus,
+          hasSecurityPost:
+            initialListing.hasSecurityPost === null
+              ? "unset"
+              : initialListing.hasSecurityPost
+                ? "yes"
+                : "no",
+          isGatedCompound:
+            initialListing.isGatedCompound === null
+              ? "unset"
+              : initialListing.isGatedCompound
+                ? "yes"
+                : "no",
+        }
+      : DEFAULT_SELECTS,
+  );
+  const [verified, setVerified] = useState(initialListing?.verified ?? false);
+  const [checks, setChecks] = useState<string[]>(
+    initialListing?.verifiedChecks ?? [],
+  );
+  const [periods, setPeriods] = useState<string[]>(
+    initialListing?.acceptedPeriods ?? [],
+  );
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [pendingUpload, setPendingUpload] = useState<{
     listingId: string;
@@ -232,6 +302,8 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
       return v === undefined ? undefined : Number(v);
     };
     const tri = (k: string) => (sel[k] === "yes" ? true : sel[k] === "no" ? false : undefined);
+    const optional = <T,>(value: T | undefined) =>
+      editing ? value ?? null : value;
 
     const feeStatus = sel.inspectionFeeStatus;
     const expires = text("expiresAt");
@@ -243,9 +315,9 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
       roomType: sel.roomType,
       area: text("area"),
       // "unset" = left out, so the database keeps "not reported yet".
-      campus: sel.campus === "unset" ? undefined : sel.campus,
-      landmark: text("landmark"),
-      distanceKm: num("distanceKm"),
+      campus: optional(sel.campus === "unset" ? undefined : sel.campus),
+      landmark: optional(text("landmark")),
+      distanceKm: optional(num("distanceKm")),
       priceAmount: num("priceAmount"),
       priceCurrency: "NGN",
       pricePeriod: sel.pricePeriod,
@@ -256,33 +328,53 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
         .filter(Boolean),
       verified,
       verifiedChecks: checks,
-      rating: num("rating"),
-      reviewCount: num("reviewCount"),
-      contactType: sel.contactType === "unset" ? undefined : sel.contactType,
+      rating: optional(num("rating")),
+      reviewCount: optional(num("reviewCount")),
+      contactType: optional(
+        sel.contactType === "unset" ? undefined : sel.contactType,
+      ),
       inspectionFeeStatus: feeStatus,
       // Only send an amount when the fee is confirmed.
-      inspectionFeeAmount: feeStatus === "confirmed" ? num("inspectionFeeAmount") : undefined,
+      inspectionFeeAmount:
+        feeStatus === "confirmed"
+          ? optional(num("inspectionFeeAmount"))
+          : editing
+            ? null
+            : undefined,
       acceptedPeriods: periods,
-      requiresUpfrontYears: num("requiresUpfrontYears"),
-      hasSecurityPost: tri("hasSecurityPost"),
-      isGatedCompound: tri("isGatedCompound"),
-      popularityScore: num("popularityScore"),
-      constructionProgress: num("constructionProgress"),
+      requiresUpfrontYears: optional(num("requiresUpfrontYears")),
+      hasSecurityPost: optional(tri("hasSecurityPost")),
+      isGatedCompound: optional(tri("isGatedCompound")),
+      popularityScore: optional(num("popularityScore")),
+      constructionProgress: optional(num("constructionProgress")),
       // The date box gives "2026-12-31"; the database wants a full date-time.
-      expiresAt: expires ? new Date(expires).toISOString() : undefined,
-      insight: text("insight"),
+      expiresAt: optional(expires ? new Date(expires).toISOString() : undefined),
+      insight: optional(text("insight")),
     };
 
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(`${API}/listings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        editing
+          ? `${API}/listings/${encodeURIComponent(initialListing.id)}`
+          : `${API}/listings`,
+        {
+          method: editing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+
       if (!res.ok) {
         setMessage({ ok: false, text: `Not saved: ${await responseError(res)}` });
+        return;
+      }
+
+      if (editing) {
+        setMessage({ ok: true, text: "Listing updated." });
+        onSaved?.();
+        onCancel?.();
         return;
       }
 
@@ -336,7 +428,7 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Name *">
-            <Input name="name" required className={num16} />
+            <Input name="name" defaultValue={initialListing?.name ?? ""} required className={num16} />
           </Field>
           <Field label="Room type *">
             <Pick value={sel.roomType} onChange={pick("roomType")} options={pairs(ROOM_TYPES)} />
@@ -348,49 +440,60 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
             <Pick value={sel.status} onChange={pick("status")} options={pairs(STATUSES)} />
           </Field>
           <Field label="Area *">
-            <Input name="area" required className={num16} />
+            <Input name="area" defaultValue={initialListing?.area ?? ""} required className={num16} />
           </Field>
           <Field label="Campus it is near" hint="Leave as 'Not reported yet' if you are not sure">
             <Pick value={sel.campus} onChange={pick("campus")} options={CAMPUS_OPTIONS} />
           </Field>
           <Field label="Landmark">
-            <Input name="landmark" className={num16} />
+            <Input name="landmark" defaultValue={initialListing?.landmark ?? ""} className={num16} />
           </Field>
           <Field label="Distance from university (km)">
-            <Input name="distanceKm" type="number" step="0.1" min="0" inputMode="decimal" className={num16} />
+            <Input name="distanceKm" defaultValue={initialListing?.distanceKm ?? ""} type="number" step="0.1" min="0" inputMode="decimal" className={num16} />
           </Field>
           <Field label="Amenities" hint="Separate with commas, e.g. water, generator, wifi">
-            <Input name="amenities" className={num16} />
+            <Input name="amenities" defaultValue={initialListing?.amenities.join(", ") ?? ""} className={num16} />
           </Field>
-          <Field
-            label="Property photos"
-            hint="JPEG, PNG, or WebP. Up to 8 photos, 5 MB each."
-          >
-            <input
-              accept="image/jpeg,image/png,image/webp"
-              className="min-h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:font-medium"
-              disabled={pendingUpload !== null || uploadingImages}
-              multiple
-              onChange={(event) => {
-                const selected = Array.from(event.currentTarget.files ?? []);
-                const tooLarge = selected.some(
-                  (file) => file.size > MAX_IMAGE_BYTES,
-                );
-                if (selected.length > MAX_IMAGES || tooLarge) {
-                  setImageFiles([]);
-                  event.currentTarget.value = "";
-                  setMessage({
-                    ok: false,
-                    text: `Choose up to ${MAX_IMAGES} photos, each no larger than 5 MB.`,
-                  });
-                  return;
-                }
-                setImageFiles(selected);
-                setMessage(null);
-              }}
-              type="file"
-            />
-          </Field>
+          {editing ? (
+            <div className="flex flex-col gap-2 text-sm">
+              <Label>Property photos</Label>
+              <p className="text-muted-foreground">
+                {initialListing.images.length} existing photo
+                {initialListing.images.length === 1 ? "" : "s"}. Existing
+                photos are preserved; photo editing is not available here.
+              </p>
+            </div>
+          ) : (
+            <Field
+              label="Property photos"
+              hint="JPEG, PNG, or WebP. Up to 8 photos, 5 MB each."
+            >
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                className="min-h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:font-medium"
+                disabled={pendingUpload !== null || uploadingImages}
+                multiple
+                onChange={(event) => {
+                  const selected = Array.from(event.currentTarget.files ?? []);
+                  const tooLarge = selected.some(
+                    (file) => file.size > MAX_IMAGE_BYTES,
+                  );
+                  if (selected.length > MAX_IMAGES || tooLarge) {
+                    setImageFiles([]);
+                    event.currentTarget.value = "";
+                    setMessage({
+                      ok: false,
+                      text: `Choose up to ${MAX_IMAGES} photos, each no larger than 5 MB.`,
+                    });
+                    return;
+                  }
+                  setImageFiles(selected);
+                  setMessage(null);
+                }}
+                type="file"
+              />
+            </Field>
+          )}
           {imageFiles.length > 0 ? (
             <div className="md:col-span-2">
               <p className="text-sm font-medium">
@@ -426,13 +529,13 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Price (NGN) *">
-            <Input name="priceAmount" type="number" min="0" required inputMode="numeric" className={num16} />
+            <Input name="priceAmount" defaultValue={initialListing?.priceAmount ?? ""} type="number" min="0" required inputMode="numeric" className={num16} />
           </Field>
           <Field label="Price is per *">
             <Pick value={sel.pricePeriod} onChange={pick("pricePeriod")} options={pairs(PRICE_PERIODS)} />
           </Field>
           <Field label="Requires how many years upfront?" hint="Leave blank if not reported yet">
-            <Input name="requiresUpfrontYears" type="number" min="0" inputMode="numeric" className={num16} />
+            <Input name="requiresUpfrontYears" defaultValue={initialListing?.requiresUpfrontYears ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
           </Field>
           <Field label="Accepted payment periods">
             <CheckGroup options={ACCEPTED_PERIODS} selected={periods} onChange={setPeriods} />
@@ -464,7 +567,7 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
             />
           </Field>
           <Field label="Inspection fee amount (NGN)" hint="Only used when you pick 'there is a fee'">
-            <Input name="inspectionFeeAmount" type="number" min="0" inputMode="numeric" className={num16} />
+            <Input name="inspectionFeeAmount" defaultValue={initialListing?.inspectionFeeAmount ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
           </Field>
         </CardContent>
       </Card>
@@ -488,10 +591,10 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
             <Pick value={sel.isGatedCompound} onChange={pick("isGatedCompound")} options={TRI} />
           </Field>
           <Field label="Rating (0 to 5)">
-            <Input name="rating" type="number" step="0.1" min="0" max="5" inputMode="decimal" className={num16} />
+            <Input name="rating" defaultValue={initialListing?.rating ?? ""} type="number" step="0.1" min="0" max="5" inputMode="decimal" className={num16} />
           </Field>
           <Field label="Number of reviews">
-            <Input name="reviewCount" type="number" min="0" inputMode="numeric" className={num16} />
+            <Input name="reviewCount" defaultValue={initialListing?.reviewCount ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
           </Field>
         </CardContent>
       </Card>
@@ -502,24 +605,31 @@ export default function ListingForm({ onSaved }: { onSaved?: () => void }) {
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Popularity score" hint="Feeds the Trending feed. Leave blank if unsure.">
-            <Input name="popularityScore" type="number" min="0" inputMode="numeric" className={num16} />
+            <Input name="popularityScore" defaultValue={initialListing?.popularityScore ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
           </Field>
           <Field label="Construction progress (0 to 100)" hint="Only for 'construction'">
-            <Input name="constructionProgress" type="number" min="0" max="100" inputMode="numeric" className={num16} />
+            <Input name="constructionProgress" defaultValue={initialListing?.constructionProgress ?? ""} type="number" min="0" max="100" inputMode="numeric" className={num16} />
           </Field>
           <Field label="Expires on" hint="Only for 'expiring'">
-            <Input name="expiresAt" type="date" className={num16} />
+            <Input name="expiresAt" defaultValue={initialListing?.expiresAt?.slice(0, 10) ?? ""} type="date" className={num16} />
           </Field>
           <Field label="Why this place? (one short, factual line)">
-            <Input name="insight" className={num16} />
+            <Input name="insight" defaultValue={initialListing?.insight ?? ""} className={num16} />
           </Field>
         </CardContent>
       </Card>
 
       <div className="flex flex-col gap-3">
-        <Button type="submit" disabled={saving} className="min-h-11 text-base md:text-sm">
-          {saving ? "Saving..." : "Save listing"}
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button type="submit" disabled={saving} className="min-h-11 text-base md:text-sm">
+            {saving ? (editing ? "Updating..." : "Saving...") : editing ? "Update listing" : "Save listing"}
+          </Button>
+          {editing && onCancel ? (
+            <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : null}
+        </div>
         {message ? (
           <p className={message.ok ? "text-sm text-green-600" : "text-sm text-destructive"}>{message.text}</p>
         ) : null}

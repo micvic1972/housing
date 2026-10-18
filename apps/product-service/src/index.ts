@@ -8,8 +8,8 @@
 // CORS is what lets the admin (port 3001) and the student app (port 3000)
 // talk to this service (port 4000). Without it the browser blocks every
 // request, and the admin form says "Could not reach the API".
-// origin: true allows any website origin, which is fine while developing.
-// Lock it to the real admin and client addresses before going live.
+// Development keeps LAN testing convenient. Production requires an explicit
+// CORS_ALLOWED_ORIGINS allowlist.
 //
 // The database does not have to be running for /health to work. It does for
 // /listings, so you can start the service and check /health before opening
@@ -19,7 +19,8 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import Fastify from "fastify";
-import { listingRoutes } from "./routes/listing.route.js";
+import { resolveCorsOrigins } from "./lib/cors-config.js";
+import { listingRoutes } from "./routes/listing.routes/listing.route.js";
 
 // logger: true prints every request in the terminal, which helps while learning.
 const app = Fastify({ logger: true });
@@ -28,7 +29,7 @@ const app = Fastify({ logger: true });
 // the plugin's default only allows GET, HEAD and POST, and we list them
 // explicitly so nothing surprises us later.
 await app.register(cors, {
-  origin: true,
+  origin: resolveCorsOrigins(),
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 });
 

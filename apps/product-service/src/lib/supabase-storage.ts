@@ -18,21 +18,73 @@ type StorageConfig = {
   serviceKey: string;
 };
 
+export type StorageConfigSetting =
+  "SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY" | "SUPABASE_STORAGE_BUCKET";
+
+export class StorageConfigurationError extends Error {
+  constructor(
+    readonly setting: StorageConfigSetting,
+    message: string,
+  ) {
+    super(message);
+    this.name = "StorageConfigurationError";
+  }
+}
+
+export class StorageRequestError extends Error {
+  constructor(
+    readonly statusCode: number,
+    readonly operation: string,
+    readonly upstreamMessage: string,
+  ) {
+    super(
+      `Supabase Storage ${operation} failed (${statusCode}): ${upstreamMessage}`,
+    );
+    this.name = "StorageRequestError";
+  }
+}
+
 let publicBucketReady: Promise<void> | null = null;
 
 function getStorageConfig(): StorageConfig {
   const configuredUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!configuredUrl || !serviceKey || !LISTING_IMAGE_BUCKET.trim()) {
-    throw new Error("Supabase Storage is not configured");
+  if (!configuredUrl?.trim()) {
+    throw new StorageConfigurationError(
+      "SUPABASE_URL",
+      "SUPABASE_URL is missing from apps/product-service/.env.",
+    );
+  }
+  if (!serviceKey?.trim()) {
+    throw new StorageConfigurationError(
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY is missing from apps/product-service/.env.",
+    );
+  }
+  if (!LISTING_IMAGE_BUCKET.trim()) {
+    throw new StorageConfigurationError(
+      "SUPABASE_STORAGE_BUCKET",
+      "SUPABASE_STORAGE_BUCKET is empty. Set a bucket name or remove it to use uninest-listing-images.",
+    );
   }
 
-  const baseUrl = new URL(configuredUrl);
+  let baseUrl: URL;
+  try {
+    baseUrl = new URL(configuredUrl);
+  } catch {
+    throw new StorageConfigurationError(
+      "SUPABASE_URL",
+      "SUPABASE_URL must be a valid Supabase project URL.",
+    );
+  }
   if (
     baseUrl.protocol !== "https:" &&
     !(baseUrl.protocol === "http:" && baseUrl.hostname === "localhost")
   ) {
-    throw new Error("Supabase URL must use HTTPS");
+    throw new StorageConfigurationError(
+      "SUPABASE_URL",
+      "SUPABASE_URL must use HTTPS (HTTP is allowed only for localhost).",
+    );
   }
 
   return {
@@ -49,11 +101,59 @@ function storageHeaders(
   config: StorageConfig,
   additional?: Record<string, string>,
 ): Headers {
+  // Supabase Storage's server client sends the API key in both headers.
+  // This matches supabase-js storage requests for sb_secret_ and legacy keys.
   return new Headers({
     apikey: config.serviceKey,
     authorization: `Bearer ${config.serviceKey}`,
     ...additional,
   });
+}
+
+function redactStorageKey(message: string, config: StorageConfig): string {
+  return message
+    .split(config.serviceKey)
+    .join("[redacted]")
+    .replace(/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]+/g, "[redacted]");
+}
+
+async function storageRequestError(
+  response: Response,
+  operation: string,
+  config: StorageConfig,
+): Promise<StorageRequestError> {
+  let upstreamMessage = response.statusText || "No error details returned";
+  try {
+    const body = await response.text();
+    if (body) {
+      try {
+        const parsed: unknown = JSON.parse(body);
+        if (typeof parsed === "object" && parsed !== null) {
+          const record = parsed as Record<string, unknown>;
+          const detail = [
+            record.message,
+            record.error_description,
+            record.error,
+          ].find((value) => typeof value === "string" && value.trim());
+          upstreamMessage =
+            typeof detail === "string" ? detail : body.slice(0, 500);
+        } else {
+          upstreamMessage = body.slice(0, 500);
+        }
+      } catch {
+        upstreamMessage = body.slice(0, 500);
+      }
+    }
+  } catch {
+    upstreamMessage =
+      response.statusText || "Could not read the error response";
+  }
+
+  return new StorageRequestError(
+    response.status,
+    operation,
+    redactStorageKey(upstreamMessage, config),
+  );
 }
 
 function encodeObjectPath(path: string): string {
@@ -86,6 +186,9 @@ async function requestPublicBucket(config: StorageConfig): Promise<void> {
       cache: "no-store",
     });
     if (created.ok) return;
+    if (created.status !== 409) {
+      throw await storageRequestError(created, "bucket creation", config);
+    }
     existing = await fetch(bucketUrl, {
       headers: storageHeaders(config),
       cache: "no-store",
@@ -93,7 +196,7 @@ async function requestPublicBucket(config: StorageConfig): Promise<void> {
   }
 
   if (!existing.ok) {
-    throw new Error(`Supabase Storage bucket lookup failed (${existing.status})`);
+    throw await storageRequestError(existing, "bucket lookup", config);
   }
 
   const bucket: unknown = await existing.json();
@@ -103,7 +206,10 @@ async function requestPublicBucket(config: StorageConfig): Promise<void> {
     !("public" in bucket) ||
     bucket.public !== true
   ) {
-    throw new Error("Supabase Storage bucket must be public for listing photos");
+    throw new StorageConfigurationError(
+      "SUPABASE_STORAGE_BUCKET",
+      `Supabase bucket "${LISTING_IMAGE_BUCKET}" is not public. Make it public for listing photos.`,
+    );
   }
 }
 
@@ -119,9 +225,7 @@ async function ensurePublicBucket(config: StorageConfig): Promise<void> {
 
 export function allowedImageType(value: string): value is AllowedContentType {
   return (
-    value === "image/jpeg" ||
-    value === "image/png" ||
-    value === "image/webp"
+    value === "image/jpeg" || value === "image/png" || value === "image/webp"
   );
 }
 
@@ -186,7 +290,7 @@ export async function uploadListingImage(
     },
   );
   if (!uploaded.ok) {
-    throw new Error(`Supabase Storage upload failed (${uploaded.status})`);
+    throw await storageRequestError(uploaded, "upload", config);
   }
 
   return {
@@ -213,7 +317,7 @@ export async function deleteListingImageObjects(keys: string[]): Promise<void> {
     },
   );
   if (!response.ok) {
-    throw new Error(`Supabase Storage deletion failed (${response.status})`);
+    throw await storageRequestError(response, "deletion", config);
   }
 }
 

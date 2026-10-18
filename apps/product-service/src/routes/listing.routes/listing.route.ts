@@ -7,14 +7,15 @@ import {
   deleteListing,
   getListing,
   listListings,
-} from "../controller/listing.controller.js";
-import { uploadListingImages } from "../controller/listing-image.controller.js";
+  updateListing,
+} from "../../controller/listing/listing.controller.js";
+import { uploadListingImages } from "../../controller/listing/listing-image.controller.js";
 import {
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_IMAGES,
-} from "../lib/supabase-storage.js";
-import { requireClerkAdmin } from "../middleware/require-clerk-admin.js";
-import { validateListing } from "../middleware/validate-listings.js";
+} from "../../lib/supabase-storage.js";
+import { requireClerkAdmin } from "../../middleware/require-clerk-admin.js";
+import { validateListing } from "../../middleware/validate-listings.js";
 
 export async function listingRoutes(app: FastifyInstance) {
   app.get("/listings", listListings);
@@ -23,6 +24,11 @@ export async function listingRoutes(app: FastifyInstance) {
     "/listings",
     { preHandler: [requireClerkAdmin, validateListing] },
     createListing,
+  );
+  app.patch<{ Params: { id: string } }>(
+    "/listings/:id",
+    { preHandler: [requireClerkAdmin, validateListing] },
+    updateListing,
   );
   app.post<{ Params: { id: string } }>(
     "/listings/:id/images",
