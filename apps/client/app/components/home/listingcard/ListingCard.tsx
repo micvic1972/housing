@@ -20,17 +20,22 @@
 // dots only run AFTER the page is in the browser (inside useEffect / events).
 // ============================================================================
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import {
   ArrowUp,
   ArrowRight,
   Clock,
-  ExternalLink,
   HardHat,
   Heart,
   MoreHorizontal,
   Share2,
-  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import type { Listing } from "./types";
@@ -39,6 +44,8 @@ import {
   getListingStatusLabel,
   isListingUnavailable,
 } from "../../../lib/listing-status";
+import { campusLabel } from "../../../config/campuses";
+import { ROOM_LABELS } from "../../filter/listing-fields";
 import { shareListing } from "../../../lib/share-listing";
 import styles from "./ListingCard.module.css";
 
@@ -51,16 +58,6 @@ type Props = {
 };
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
-
-// ----------------------------------------------------------------------------
-// One-time peek bookkeeping.
-//
-// `peekPlayed` lives at module level, so all cards share it: once ANY card has
-// peeked, no other card will. sessionStorage makes it survive a page reload
-// within the same tab (wrapped in try/catch because private modes can block it).
-// ----------------------------------------------------------------------------
-const PEEK_KEY = "delta-housing-peek-played";
-let peekPlayed = false;
 
 // ----------------------------------------------------------------------------
 // Trust / payment signals: at most two, warnings first.
@@ -135,27 +132,39 @@ export function ListingCard({
   const signals = getSignals(listing);
   const chip = getPhotoChip(listing);
   const isBuild = listing.kind === "construction";
+  const locationParts = [
+    campusLabel(listing.location.campus) ?? listing.location.campus,
+    listing.location.area,
+    listing.location.landmark,
+  ].filter((part): part is string => Boolean(part));
+  const location = [...new Set(locationParts)].join(" · ");
+  const amenities = listing.amenities.slice(0, 2).join(" · ");
 
-  // Build the list of photos to show. If a photo has a real url, use it;
-  // otherwise draw the placeholder for that photo position (0, 1, 2).
-  // If a listing somehow has no images at all, we still show one placeholder.
+  // Empty image records are API placeholders, not separate photos.
   const slides = useMemo(() => {
-    const source =
-      listing.images && listing.images.length > 0
-        ? listing.images
-        : [{ id: `${listing.id}-ph`, url: "", alt: listing.name }];
+    const source = listing.images.filter((image) => image.url.trim());
 
+    if (source.length === 0) {
+      const fallback = placeholderScene(listing.id, isBuild, 0);
+      return [
+        {
+          key: `${listing.id}-placeholder`,
+          alt: `${listing.name} illustration`,
+          src: fallback,
+          fallback,
+        },
+      ];
+    }
     return source.map((img, i) => ({
       key: img.id,
-      alt: img.alt,
-      src: img.url || placeholderScene(listing.id, isBuild, i),
+      alt: img.alt || listing.name,
+      src: img.url,
       fallback: placeholderScene(listing.id, isBuild, i),
     }));
   }, [listing.id, listing.images, listing.name, isBuild]);
 
   const count = slides.length;
 
-  const cardRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef(0);
 
@@ -180,6 +189,17 @@ export function ListingCard({
     } catch {
       setShareStatus("error");
     }
+  }
+
+  function openCardFromContent(event: MouseEvent<HTMLElement>) {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest("button, a, summary, [role='button']")
+    ) {
+      return;
+    }
+    onOpen?.(listing.id);
   }
 
   // --------------------------------------------------------------------------
@@ -207,75 +227,12 @@ export function ListingCard({
     };
   }, []);
 
-  // --------------------------------------------------------------------------
-  // The one-time peek.
-  // Plays on the first card that becomes at least 60% visible. Skipped when
-  // there is only one photo, when it already played this session, or when the
-  // person prefers reduced motion.
-  // --------------------------------------------------------------------------
-  useEffect(() => {
-    if (count < 2 || peekPlayed) return;
-
-    try {
-      if (sessionStorage.getItem(PEEK_KEY) === "1") {
-        peekPlayed = true;
-        return;
-      }
-    } catch {
-      // storage blocked: fine, the module flag still limits it to once per load
-    }
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const card = cardRef.current;
-    if (!card || !("IntersectionObserver" in window)) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-
-          observer.disconnect();
-
-          // Another card may have peeked while we were waiting.
-          if (peekPlayed) return;
-          peekPlayed = true;
-          try {
-            sessionStorage.setItem(PEEK_KEY, "1");
-          } catch {
-            // ignore
-          }
-
-          // Slide every photo left ~34px and back over 1.2s. Because photos
-          // sit side by side, the next photo slides into view at the edge.
-          const imgs = scrollerRef.current?.querySelectorAll("img");
-          imgs?.forEach((img) => {
-            img.animate(
-              [
-                { transform: "translateX(0)", offset: 0 },
-                { transform: "translateX(-34px)", offset: 0.4 },
-                { transform: "translateX(-34px)", offset: 0.55 },
-                { transform: "translateX(0)", offset: 1 },
-              ],
-              { duration: 1200, easing: "ease-in-out" },
-            );
-          });
-          return;
-        }
-      },
-      { threshold: 0.6 },
-    );
-
-    observer.observe(card);
-    return () => observer.disconnect();
-  }, [count]);
-
   return (
     <article
-      ref={cardRef}
       className={`${styles.card} ${
         isListingUnavailable(listing) ? styles.unavailable : ""
       }`}
+      onClick={openCardFromContent}
     >
       {/* ====================================================================
           PHOTO AREA
@@ -317,13 +274,6 @@ export function ListingCard({
 
         {/* These trust and carousel indicators are decorative, so their
             pointer-events: none styling lets swipes reach the photo strip. */}
-
-        {listing.verified ? (
-          <span className={styles.verified}>
-            <ShieldCheck size={12} aria-hidden />
-            Verified
-          </span>
-        ) : null}
 
         {chip ? (
           <span className={styles.chip}>
@@ -412,22 +362,20 @@ export function ListingCard({
                 <Share2 size={15} aria-hidden />
                 Share listing
               </button>
-              <Link href={`/listings/${encodeURIComponent(listing.id)}`}>
-                <ExternalLink size={15} aria-hidden />
-                Open full listing
-              </Link>
             </div>
           </details>
         </div>
 
-        <p className={styles.sub}>
-          {listing.location.area}
-        </p>
+        {location ? <p className={styles.sub}>{location}</p> : null}
+
+        <p className={styles.type}>{ROOM_LABELS[listing.roomType]}</p>
 
         <p className={styles.price}>
           <b>{naira(listing.pricing.amount)}</b>
           <span> / {listing.pricing.period}</span>
         </p>
+
+        {amenities ? <p className={styles.amenities}>{amenities}</p> : null}
 
         <Link
           href={`/listings/${encodeURIComponent(listing.id)}`}
@@ -449,17 +397,10 @@ export function ListingCard({
           </span>
         ) : null}
 
-        {signals.length > 0 ? (
-          <div className={styles.signals}>
-            {signals.map((s) => (
-              <span
-                key={s.text}
-                className={`${styles.signal} ${styles[s.tone]}`}
-              >
-                {s.text}
-              </span>
-            ))}
-          </div>
+        {signals[0] ? (
+          <p className={`${styles.fact} ${styles[signals[0].tone]}`}>
+            {signals[0].text}
+          </p>
         ) : null}
       </div>
     </article>
