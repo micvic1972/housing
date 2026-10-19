@@ -35,7 +35,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UniNest admin",
+  title: "Delta Housing admin",
   description: "Internal tool for entering and verifying listings",
 };
 
@@ -59,7 +59,7 @@ export default function RootLayout({
                 <SidebarInset className="min-w-0">
                   <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
                     <SidebarTrigger className="size-11 md:hidden" />
-                    <span className="text-sm font-medium">UniNest admin</span>
+                    <span className="text-sm font-medium">Delta Housing admin</span>
                     <div className="ml-auto flex items-center gap-2">
                       <Show when="signed-out">
                         <SignInButton mode="modal">

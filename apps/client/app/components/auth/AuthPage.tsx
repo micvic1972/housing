@@ -15,7 +15,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
     <main className={styles.page}>
       <section className={styles.panel}>
         <Link href="/" className={styles.brand}>
-          UniNest
+          Delta Housing
         </Link>
         <h1 className={styles.title}>
           {isSignIn ? "Welcome back" : "Create your account"}

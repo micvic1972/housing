@@ -1,13 +1,12 @@
 "use client";
 
 // ============================================================================
-// ListingDetail: the content inside the "Quick look" sheet (Step 3)
+// ListingDetail: shared content for Quick Look and the full listing page.
 //
 // Layout, top to bottom:
 //   1. Hero photos: each photo is 86% wide so the NEXT photo peeks in at the
 //      edge (a signifier that says "swipe me"), with a "1 / 3" counter.
-//   2. Info block: name, distance, area, rating, and the same two trust
-//      signals the card shows.
+//   2. Info block: name, area, room type, and the same trust signals as cards.
 //   3. A sticky tab bar with the four questions students ask:
 //        Overview: why this place?
 //        Trust:    who checked it, and who will I deal with?
@@ -34,21 +33,22 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { Check, Heart, Minus, Star } from "lucide-react";
+import { Check, Heart, Minus } from "lucide-react";
 import type { Listing } from "./types";
 import { placeholderScene } from "./placeholder-scene";
 import { getSignals } from "./ListingCard";
+import { ROOM_LABELS } from "../../filter/listing-fields";
+import { campusLabel } from "../../../config/campuses";
+import {
+  getListingStatusLabel,
+  isListingUnavailable,
+} from "../../../lib/listing-status";
 import styles from "./ListingDetail.module.css";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
-}
-
-// Walking time at an easy student pace of 5 km/h, never less than 1 minute.
-function walkMinutes(km: number) {
-  return Math.max(1, Math.round((km / 5) * 60));
 }
 
 // ----------------------------------------------------------------------------
@@ -121,7 +121,7 @@ function Hero({
   return (
     <div
       className={`${styles.heroWrap} ${
-        listing.kind === "rented" ? styles.rented : ""
+        isListingUnavailable(listing) ? styles.unavailable : ""
       } ${presentation === "page" ? styles.heroWrapPage : ""}`}
     >
       <div
@@ -167,37 +167,44 @@ function Hero({
 // ----------------------------------------------------------------------------
 
 function OverviewTab({ listing }: { listing: Listing }) {
-  const km = listing.location.distanceFromUniversityKm;
-
   return (
     <>
-      <h3 className={styles.sectionTitle}>Why this place?</h3>
-      <p className={styles.lead}>{listing.insight ?? "Nothing noted yet."}</p>
+      <h3 className={styles.sectionTitle}>About this place</h3>
+      <p className={styles.lead}>
+        {listing.insight || "No description has been provided for this listing."}
+      </p>
 
       <dl className={styles.rows}>
         <div className={styles.row}>
-          <dt>From the gate</dt>
-          <dd>
-            {km != null
-              ? `${km} km, about ${walkMinutes(km)} min walk`
-              : "Not reported yet"}
-          </dd>
+          <dt>Room type</dt>
+          <dd>{ROOM_LABELS[listing.roomType]}</dd>
         </div>
         <div className={styles.row}>
           <dt>Area</dt>
           <dd>{listing.location.area}</dd>
         </div>
-        <div className={styles.row}>
-          <dt>Rating</dt>
-          <dd>
-            {listing.rating != null
-              ? `${listing.rating.toFixed(1)} from ${
-                  listing.reviewCount ?? 0
-                } reviews`
-              : "No reviews yet"}
-          </dd>
-        </div>
+        {listing.location.campus ? (
+          <div className={styles.row}>
+            <dt>Campus</dt>
+            <dd>
+              {campusLabel(listing.location.campus) ?? listing.location.campus}
+            </dd>
+          </div>
+        ) : null}
       </dl>
+
+      <h3 className={styles.sectionTitle}>Amenities</h3>
+      {listing.amenities.length ? (
+        <ul className={styles.chips}>
+          {listing.amenities.map((amenity) => (
+            <li key={amenity} className={styles.check}>
+              {amenity}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles.gap}>Amenities have not been reported yet.</p>
+      )}
     </>
   );
 }
@@ -256,7 +263,7 @@ function TrustTab({ listing }: { listing: Listing }) {
           Not verified yet.{" "}
           {listing.kind === "construction"
             ? "This place is still being built, so there is nothing to check in person."
-            : "Nobody from UniNest has checked it."}
+            : "Nobody from Delta Housing has checked it."}
         </p>
       )}
 
@@ -368,7 +375,6 @@ function CostsTab({ listing }: { listing: Listing }) {
 // ----------------------------------------------------------------------------
 
 function LocationTab({ listing }: { listing: Listing }) {
-  const km = listing.location.distanceFromUniversityKm;
   const safety = listing.safety;
 
   // Only show a safety fact when we actually know it.
@@ -388,39 +394,28 @@ function LocationTab({ listing }: { listing: Listing }) {
 
   return (
     <>
-      <h3 className={styles.sectionTitle}>From the UNIDEL gate</h3>
-
-      {km != null ? (
-        <>
-          {/* A simple sketch, not a real map. A real map comes later. */}
-          <svg
-            className={styles.map}
-            viewBox="0 0 320 130"
-            role="img"
-            aria-label={`Sketch of the walk from the UNIDEL gate to ${listing.name}`}
-          >
-            <rect className={styles.mapBg} width="320" height="130" rx="12" />
-            <path
-              className={styles.mapRoad}
-              d="M40 90 C 110 90, 130 40, 200 44 S 270 60, 280 40"
-            />
-            <circle className={styles.mapGate} cx="40" cy="90" r="8" />
-            <circle className={styles.mapPlace} cx="280" cy="40" r="8" />
-            <text className={styles.mapText} x="40" y="114" textAnchor="middle">
-              UNIDEL gate
-            </text>
-            <text className={styles.mapText} x="280" y="22" textAnchor="middle">
-              This place
-            </text>
-          </svg>
-          <p className={styles.lead}>
-            {km} km, about {walkMinutes(km)} min on foot
-          </p>
-          <p className={styles.note}>Sketch, not to scale.</p>
-        </>
-      ) : (
-        <p className={styles.gap}>Distance not reported yet.</p>
-      )}
+      <h3 className={styles.sectionTitle}>Location details</h3>
+      <dl className={styles.rows}>
+        <div className={styles.row}>
+          <dt>Area</dt>
+          <dd>{listing.location.area}</dd>
+        </div>
+        {listing.location.campus ? (
+          <div className={styles.row}>
+            <dt>Campus</dt>
+            <dd>{listing.location.campus}</dd>
+          </div>
+        ) : null}
+        {listing.location.landmark ? (
+          <div className={styles.row}>
+            <dt>Nearby landmark</dt>
+            <dd>{listing.location.landmark}</dd>
+          </div>
+        ) : null}
+      </dl>
+      <p className={styles.note}>
+        Exact distance and directions are not available for this listing.
+      </p>
 
       <h3 className={styles.sectionTitle}>Safety</h3>
 
@@ -472,7 +467,7 @@ export default function ListingDetail({
   const uid = useId();
 
   const signals = getSignals(listing);
-  const km = listing.location.distanceFromUniversityKm;
+  const statusLabel = getListingStatusLabel(listing);
 
   // Left / Right arrows move between tabs (standard tab keyboard behaviour).
   function onTabKeyDown(e: ReactKeyboardEvent, index: number) {
@@ -510,15 +505,7 @@ export default function ListingDetail({
           <h2 className={styles.name}>{listing.name}</h2>
         )}
         <p className={styles.meta}>
-          {km != null ? `${km} km · ` : ""}
-          {listing.location.area}
-          {listing.rating != null ? (
-            <>
-              {" · "}
-              <Star size={12} aria-hidden className={styles.star} />{" "}
-              {listing.rating.toFixed(1)}
-            </>
-          ) : null}
+          {ROOM_LABELS[listing.roomType]} · {listing.location.area}
         </p>
         {presentation === "page" ? (
           <p className={styles.pricePage}>
@@ -527,8 +514,17 @@ export default function ListingDetail({
           </p>
         ) : null}
 
-        {signals.length > 0 ? (
+        {statusLabel || signals.length > 0 ? (
           <div className={styles.signals}>
+            {statusLabel ? (
+              <span
+                className={`${styles.signal} ${
+                  isListingUnavailable(listing) ? styles.warn : styles.neutral
+                }`}
+              >
+                {statusLabel}
+              </span>
+            ) : null}
             {signals.map((s) => (
               <span
                 key={s.text}
@@ -595,10 +591,12 @@ export default function ListingDetail({
 export function ListingDetailFooter({
   listing,
   saved,
+  savingDisabled = false,
   onToggleSave,
 }: {
   listing: Listing;
   saved: boolean;
+  savingDisabled?: boolean;
   onToggleSave: (id: string) => void;
 }) {
   return (
@@ -606,6 +604,7 @@ export function ListingDetailFooter({
       <button
         type="button"
         className={`${styles.saveBtn} ${saved ? styles.saveOn : ""}`}
+        disabled={savingDisabled}
         aria-label={
           saved ? `Remove ${listing.name} from saved` : `Save ${listing.name}`
         }

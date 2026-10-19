@@ -64,7 +64,7 @@
   height: 100%;
   object-fit: cover;
 }
-.rented .heroImg {
+.unavailable .heroImg {
   filter: grayscale(1) brightness(0.7);
 }
 
@@ -417,8 +417,9 @@
   }
 
   .tabsPage .tab {
-    flex: 1 0 auto;
-    min-width: 88px;
-    padding: 0 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 12px;
   }
 }

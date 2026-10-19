@@ -54,6 +54,14 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      controller.abort();
+      setValue((current) => ({
+        ...current,
+        status: "error",
+        reload,
+      }));
+    }, 15_000);
 
     Promise.resolve()
       .then(() =>
@@ -88,9 +96,15 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
             reload,
           }));
         }
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
       });
 
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, [reload, reloadVersion]);
 
   useEffect(() => {

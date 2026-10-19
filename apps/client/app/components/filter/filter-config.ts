@@ -1,46 +1,18 @@
-import type {
-  BudgetBand,
-  FilterFields,
-  FilterKey,
-  Filters,
-} from "./filter-types";
+import type { BudgetBand, FilterFields, FilterKey, Filters } from "./filter-types";
 
 /**
  * FILTER OPTIONS. To add a room type, an area or a budget band, edit the lists below.
  * The chips and the sheet update on their own.
  */
 
-export const UNIVERSITY = "UNIDEL";
-
 export const BUDGET_OPTIONS: ReadonlyArray<{
   value: BudgetBand;
   label: string;
-  matches: (pricePerYear: number) => boolean;
+  matches: (priceAmount: number) => boolean;
 }> = [
   { value: "lt", label: "Under ₦150,000", matches: (p) => p < 150_000 },
   { value: "mid", label: "₦150,000 to ₦220,000", matches: (p) => p >= 150_000 && p <= 220_000 },
   { value: "hi", label: "Above ₦220,000", matches: (p) => p > 220_000 },
-];
-
-export const ROOM_OPTIONS: readonly string[] = [
-  "Self-contain",
-  "Single room",
-  "Shared room",
-  "Studio",
-  "1-bed flat",
-];
-
-export const AREA_OPTIONS: readonly string[] = [
-  "Main Gate Axis",
-  "Behind Campus",
-  "Agbor Road",
-  "Old Market Side",
-];
-
-/** Walking distance from the gate. Distance works as a second price tag for students. */
-export const DISTANCE_OPTIONS: ReadonlyArray<{ value: number; label: string }> = [
-  { value: 0.5, label: "Within 0.5 km" },
-  { value: 1, label: "Within 1 km" },
 ];
 
 /**
@@ -48,7 +20,6 @@ export const DISTANCE_OPTIONS: ReadonlyArray<{ value: number; label: string }> =
  * both use this list, so adding a switch here keeps them in step.
  */
 export const MORE_FILTER_KEYS: readonly FilterKey[] = [
-  "verified",
   "ownerOnly",
   "noFee",
   "lowUpfront",
@@ -57,11 +28,10 @@ export const MORE_FILTER_KEYS: readonly FilterKey[] = [
 ];
 
 export const EMPTY_FILTERS: Filters = {
+  campus: null,
   budget: null,
   room: null,
   area: null,
-  maxKm: null,
-  verified: false,
   ownerOnly: false,
   noFee: false,
   lowUpfront: false,
@@ -73,11 +43,10 @@ export const EMPTY_FILTERS: Filters = {
 /** How many filters are switched on (useful for a badge). */
 export function countActiveFilters(f: Filters): number {
   return [
+    f.campus,
     f.budget,
     f.room,
     f.area,
-    f.maxKm,
-    f.verified,
     f.ownerOnly,
     f.noFee,
     f.lowUpfront,
@@ -106,14 +75,16 @@ export function applyFilters<T>(items: readonly T[], f: Filters, pick: (item: T)
 
   return items.filter((item) => {
     const x = pick(item);
-    if (f.verified && !x.verified) return false;
+    if (
+      f.campus &&
+      x.campus?.trim().toLowerCase() !== f.campus.trim().toLowerCase()
+    ) return false;
     if (f.room && x.room !== f.room) return false;
     if (
       f.area &&
       x.area.trim().toLowerCase() !== f.area.trim().toLowerCase()
     ) return false;
     if (band && !band.matches(x.price)) return false;
-    if (f.maxKm !== null && (x.km === undefined || x.km > f.maxKm)) return false;
     if (f.ownerOnly && !x.owner) return false;
     if (f.noFee && !x.noFee) return false;
     if (f.lowUpfront && !x.lowUpfront) return false;

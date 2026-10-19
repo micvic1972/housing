@@ -12,10 +12,8 @@
 //   3. A small up-arrow in a glass circle says "tap to open a quick look".
 //   4. The FIRST card the student sees plays a one-time "peek": its photos
 //      slide left a little and back, teaching that the photo can be swiped.
-//   5. Layering: the photo sits ABOVE the stretched name overlay, so swipes
-//      reach the carousel. Tapping the photo (a click, which a swipe does not
-//      produce) opens the full listing page. A separate quick-look control
-//      keeps the preview available.
+//   5. Photo and title open Quick View; dedicated links and the actions menu
+//      open the shareable detail page without nesting interactive controls.
 //
 // HYDRATION RULE (unchanged): the server and browser must render the same
 // HTML. So no Date.now(), no random values while rendering. The peek and the
@@ -25,20 +23,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUp,
+  ArrowRight,
   Clock,
+  ExternalLink,
   HardHat,
   Heart,
+  MoreHorizontal,
+  Share2,
   ShieldCheck,
-  Star,
 } from "lucide-react";
 import Link from "next/link";
 import type { Listing } from "./types";
 import { placeholderScene } from "./placeholder-scene";
+import {
+  getListingStatusLabel,
+  isListingUnavailable,
+} from "../../../lib/listing-status";
+import { shareListing } from "../../../lib/share-listing";
 import styles from "./ListingCard.module.css";
 
 type Props = {
   listing: Listing;
   saved?: boolean;
+  savingDisabled?: boolean;
   onToggleSave?: (id: string) => void;
   onOpen?: (id: string) => void;
 };
@@ -52,7 +59,7 @@ const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 // peeked, no other card will. sessionStorage makes it survive a page reload
 // within the same tab (wrapped in try/catch because private modes can block it).
 // ----------------------------------------------------------------------------
-const PEEK_KEY = "uninest-peek-played";
+const PEEK_KEY = "delta-housing-peek-played";
 let peekPlayed = false;
 
 // ----------------------------------------------------------------------------
@@ -65,7 +72,7 @@ let peekPlayed = false;
 };
 
 export function getSignals(l: Listing): Signal[] {
-  if (l.kind === "rented") return [];
+  if (isListingUnavailable(l)) return [];
 
   const out: Signal[] = [];
 
@@ -96,27 +103,22 @@ export function getSignals(l: Listing): Signal[] {
 function getPhotoChip(
   l: Listing,
 ): { text: string; icon: "hat" | "clock" | null } | null {
-  switch (l.kind) {
-    case "construction":
-      return {
-        text:
-          l.constructionProgress != null
-            ? `${l.constructionProgress}% built`
-            : "Under construction",
-        icon: "hat",
-      };
+  const text = getListingStatusLabel(l);
+  if (!text) return null;
 
-    case "expiring":
-      // We don't calculate "Opens in N days" here: Date.now() differs between
-      // server and browser and would break hydration. A live countdown comes later.
-      return { text: "Frees up soon", icon: "clock" };
+  const constructionProgress =
+    l.kind === "construction" && l.constructionProgress != null
+      ? `${l.constructionProgress}% built`
+      : null;
+  const label = constructionProgress ?? text;
+  const icon =
+    label === "Under construction" || constructionProgress
+      ? "hat"
+      : label === "Frees up soon"
+        ? "clock"
+        : null;
 
-    case "rented":
-      return { text: "Rented", icon: null };
-
-    default:
-      return null;
-  }
+  return { text: label, icon };
 }
 
 // ----------------------------------------------------------------------------
@@ -126,12 +128,12 @@ function getPhotoChip(
 export function ListingCard({
   listing,
   saved,
+  savingDisabled,
   onToggleSave,
   onOpen,
 }: Props) {
   const signals = getSignals(listing);
   const chip = getPhotoChip(listing);
-  const km = listing.location.distanceFromUniversityKm;
   const isBuild = listing.kind === "construction";
 
   // Build the list of photos to show. If a photo has a real url, use it;
@@ -154,11 +156,31 @@ export function ListingCard({
   const count = slides.length;
 
   const cardRef = useRef<HTMLElement>(null);
-  const scrollerRef = useRef<HTMLAnchorElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef(0);
 
   // Which photo is showing (drives the active dot).
   const [active, setActive] = useState(0);
+  const [shareStatus, setShareStatus] = useState<
+    "idle" | "shared" | "copied" | "error"
+  >("idle");
+  const menuRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (shareStatus === "idle") return;
+    const timeout = window.setTimeout(() => setShareStatus("idle"), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [shareStatus]);
+
+  async function shareCurrentListing() {
+    menuRef.current?.removeAttribute("open");
+    try {
+      const result = await shareListing(listing);
+      if (result !== "cancelled") setShareStatus(result);
+    } catch {
+      setShareStatus("error");
+    }
+  }
 
   // --------------------------------------------------------------------------
   // Dots follow the scroll position.
@@ -252,20 +274,29 @@ export function ListingCard({
     <article
       ref={cardRef}
       className={`${styles.card} ${
-        listing.kind === "rented" ? styles.rented : ""
+        isListingUnavailable(listing) ? styles.unavailable : ""
       }`}
     >
       {/* ====================================================================
-          PHOTO AREA (sits above the stretched name overlay)
+          PHOTO AREA
           ==================================================================== */}
 
       <div className={styles.media}>
-        {/* The swipeable strip opens the full page when tapped. */}
-        <Link
+        {/* Photo and title open Quick View; the explicit link opens the full page. */}
+        <div
           ref={scrollerRef}
-          href={`/listings/${encodeURIComponent(listing.id)}`}
           className={styles.scroller}
           onScroll={handleScroll}
+          role="button"
+          tabIndex={0}
+          aria-label={`Quick look at ${listing.name}`}
+          onClick={() => onOpen?.(listing.id)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onOpen?.(listing.id);
+            }
+          }}
         >
           {slides.map((s) => (
             <div key={s.key} className={styles.slide}>
@@ -282,10 +313,10 @@ export function ListingCard({
               />
             </div>
           ))}
-        </Link>
+        </div>
 
         {/* These trust and carousel indicators are decorative, so their
-            pointer-events: none styling lets swipes reach the photo link. */}
+            pointer-events: none styling lets swipes reach the photo strip. */}
 
         {listing.verified ? (
           <span className={styles.verified}>
@@ -345,6 +376,7 @@ export function ListingCard({
       <button
         type="button"
         className={`${styles.heart} ${saved ? styles.heartOn : ""}`}
+        disabled={savingDisabled}
         aria-label={
           saved ? `Remove ${listing.name} from saved` : `Save ${listing.name}`
         }
@@ -363,26 +395,32 @@ export function ListingCard({
       <div className={styles.body}>
         <div className={styles.titleRow}>
           <h3 className={styles.name}>
-            {/* The link stretches over the card; the photo and controls sit above it. */}
-            <Link
-              href={`/listings/${encodeURIComponent(listing.id)}`}
+            <button
+              type="button"
               className={styles.open}
-              aria-label={`View full listing: ${listing.name}`}
+              onClick={() => onOpen?.(listing.id)}
             >
               {listing.name}
-            </Link>
+            </button>
           </h3>
-
-          {listing.rating ? (
-            <span className={styles.rating}>
-              <Star size={12} aria-hidden />
-              {listing.rating.toFixed(1)}
-            </span>
-          ) : null}
+          <details className={styles.menu} ref={menuRef}>
+            <summary aria-label={`More actions for ${listing.name}`}>
+              <MoreHorizontal size={19} aria-hidden />
+            </summary>
+            <div className={styles.menuPanel}>
+              <button type="button" onClick={shareCurrentListing}>
+                <Share2 size={15} aria-hidden />
+                Share listing
+              </button>
+              <Link href={`/listings/${encodeURIComponent(listing.id)}`}>
+                <ExternalLink size={15} aria-hidden />
+                Open full listing
+              </Link>
+            </div>
+          </details>
         </div>
 
         <p className={styles.sub}>
-          {km != null ? `${km} km · ` : ""}
           {listing.location.area}
         </p>
 
@@ -390,6 +428,26 @@ export function ListingCard({
           <b>{naira(listing.pricing.amount)}</b>
           <span> / {listing.pricing.period}</span>
         </p>
+
+        <Link
+          href={`/listings/${encodeURIComponent(listing.id)}`}
+          className={styles.fullPage}
+        >
+          View full listing <ArrowRight size={15} aria-hidden />
+        </Link>
+        {shareStatus !== "idle" ? (
+          <span
+            className={styles.shareFeedback}
+            role={shareStatus === "error" ? "alert" : "status"}
+            aria-live="polite"
+          >
+            {shareStatus === "shared"
+              ? "Share sheet opened."
+              : shareStatus === "copied"
+                ? "Link copied."
+                : "Could not share this link."}
+          </span>
+        ) : null}
 
         {signals.length > 0 ? (
           <div className={styles.signals}>

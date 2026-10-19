@@ -49,7 +49,7 @@ export function AppSidebar() {
           sidebar is a drawer (the top bar's menu button opens it). */}
       <SidebarHeader className="flex-row items-center justify-between px-3 py-3 group-data-[collapsible=icon]:justify-center">
         <span className="truncate text-base font-semibold group-data-[collapsible=icon]:hidden">
-          UniNest admin
+          Delta Housing admin
         </span>
         <button
           type="button"

@@ -9,14 +9,14 @@
 //
 // Three states, so the sheet is never blank:
 //   1. Nothing typed  -> tap-to-search suggestions (area names)
-//   2. Typed, matches -> compact result rows (photo, name, distance, price)
+//   2. Typed, matches -> compact result rows (photo, name, area, price)
 //   3. Typed, none    -> an honest empty state with a "Clear search" button
 //
 // It searches through filters.q, the SAME text the feed already filters by,
 // and it uses the SAME applyFilters + listingFilterFields, so the rows here
 // always agree with the feed and with "Show N places" in the Filters sheet.
 //
-// Tapping a row opens the shareable listing page through the owning page.
+// Tapping a row opens Quick View through the owning page.
 // ============================================================================
 
 import { useEffect, useRef } from "react";
@@ -25,20 +25,13 @@ import BottomSheet from "../ui/bottomsheet/BottomSheet";
 import { useListings } from "../../lib/listings-provider";
 import { placeholderScene } from "../home/listingcard/placeholder-scene";
 import type { Listing } from "../home/listingcard/types";
-import { AREA_OPTIONS, applyFilters } from "./filter-config";
+import { applyFilters } from "./filter-config";
 import { useFilters } from "./FilterProvider";
 import { listingFilterFields } from "./listing-fields";
+import { getListingStatusLabel } from "../../lib/listing-status";
 import styles from "./SearchSheet.module.css";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
-
-// A short status word for places that are not simply "available".
-// Honest-gap rule: a rented or unfinished place must not look bookable.
-const STATUS_TEXT: Partial<Record<Listing["kind"], string>> = {
-  construction: "Under construction",
-  expiring: "Frees up soon",
-  rented: "Rented",
-};
 
 interface SearchSheetProps {
   /** Called with a listing id when a student taps a result row. */
@@ -60,9 +53,6 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
   const results = applyFilters(listings, filters, listingFilterFields);
 
   function openResult(id: string) {
-    // The search was used to FIND one place. Clear the text so the feed
-    // behind the sheet is not silently left filtered.
-    setFilter("q", "");
     closeSheet();
     onOpenListing(id);
   }
@@ -92,6 +82,9 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
         query={query}
         raw={filters.q}
         results={results}
+        areas={[...new Set(listings.map((listing) => listing.location.area))]
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b))}
         listingsStatus={status}
         onChange={(v) => setFilter("q", v)}
         onOpenResult={openResult}
@@ -111,6 +104,7 @@ function SearchPanel({
   query,
   raw,
   results,
+  areas,
   listingsStatus,
   onChange,
   onOpenResult,
@@ -119,6 +113,7 @@ function SearchPanel({
   query: string;
   raw: string;
   results: Listing[];
+  areas: string[];
   listingsStatus: "loading" | "ready" | "error";
   onChange: (value: string) => void;
   onOpenResult: (id: string) => void;
@@ -197,7 +192,7 @@ function SearchPanel({
         <>
           <h3 className={styles.groupTitle}>Try an area</h3>
           <div className={styles.chips}>
-            {AREA_OPTIONS.map((area) => (
+            {areas.map((area) => (
               <button
                 key={area}
                 type="button"
@@ -252,7 +247,7 @@ function SearchPanel({
 }
 
 // ----------------------------------------------------------------------------
-// One compact result row: small photo, name, distance + area, price.
+// One compact result row: small photo, name, area, price.
 // The whole row is ONE button, so it is easy to tap and easy for keyboards.
 // ----------------------------------------------------------------------------
 
@@ -263,8 +258,7 @@ function ResultRow({
   listing: Listing;
   onOpen: (id: string) => void;
 }) {
-  const km = listing.location.distanceFromUniversityKm;
-  const status = STATUS_TEXT[listing.kind];
+  const status = getListingStatusLabel(listing);
 
   // Same rule as the card: a real photo if there is a url, else the
   // placeholder for photo position 0.
@@ -296,7 +290,6 @@ function ResultRow({
       <span className={styles.text}>
         <span className={styles.name}>{listing.name}</span>
         <span className={styles.meta}>
-          {km != null ? `${km} km · ` : ""}
           {listing.location.area}
           {status ? ` · ${status}` : ""}
         </span>

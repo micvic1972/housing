@@ -8,7 +8,7 @@ export default function UnauthorizedPage() {
         Administrator access required
       </h1>
       <p className="text-sm text-muted-foreground">
-        This signed-in account is not authorized to manage UniNest listings.
+        This signed-in account is not authorized to manage Delta Housing listings.
       </p>
       <Link className="text-sm font-medium text-primary underline" href="/login">
         Use another account

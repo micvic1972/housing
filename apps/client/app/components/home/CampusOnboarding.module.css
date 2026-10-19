@@ -1,0 +1,95 @@
+.content {
+  padding: 12px var(--gutter) 24px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.content h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.content p:not(.eyebrow, .error) {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.options {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.option,
+.skip,
+.continue {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.option {
+  padding: 0 14px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+}
+
+.optionSelected {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+  color: var(--primary-soft);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.skip,
+.continue {
+  padding: 0 14px;
+}
+
+.skip {
+  background: none;
+  color: var(--text);
+}
+
+.continue {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.continue:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 10px 0 0;
+  color: var(--urgent);
+  font-size: 13px;
+}
+
+.option:focus-visible,
+.skip:focus-visible,
+.continue:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}

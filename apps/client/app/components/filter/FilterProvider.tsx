@@ -1,14 +1,28 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { EMPTY_FILTERS, countActiveFilters } from "./filter-config";
 import type { FilterKey, Filters, SheetMode } from "./filter-types";
+import { isCampusId, type CampusId } from "../../config/campuses";
+
+const CAMPUS_PREFERENCE_KEY = "delta-housing.campus-preference.v1";
 
 type FiltersContextValue = {
   /** What the student has chosen right now. */
   filters: Filters;
   setFilter: <K extends FilterKey>(key: K, value: Filters[K]) => void;
   clearFilters: () => void;
+  campusPreferenceReady: boolean;
+  campusPreferenceError: string | null;
+  setCampusPreference: (campus: CampusId | null) => boolean;
   activeCount: number;
   /** Which part of the sheet is open, or null when it is closed. */
   sheetMode: SheetMode | null;
@@ -28,12 +42,59 @@ const FiltersContext = createContext<FiltersContextValue | null>(null);
 export function FiltersProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
+  const [campusPreferenceReady, setCampusPreferenceReady] = useState(false);
+  const [campusPreferenceError, setCampusPreferenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(CAMPUS_PREFERENCE_KEY);
+        if (stored && isCampusId(stored)) {
+          setFilters((previous) => ({ ...previous, campus: stored }));
+        } else if (stored) {
+          throw new Error("Campus preference is invalid");
+        }
+      } catch {
+        setCampusPreferenceError(
+          "Your campus preference could not be read from this browser.",
+        );
+      } finally {
+        setCampusPreferenceReady(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const setFilter = useCallback(<K extends FilterKey>(key: K, value: Filters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const clearFilters = useCallback(() => setFilters(EMPTY_FILTERS), []);
+  const setCampusPreference = useCallback(
+    (campus: CampusId | null) => {
+      try {
+        if (campus) {
+          window.localStorage.setItem(CAMPUS_PREFERENCE_KEY, campus);
+        } else {
+          window.localStorage.removeItem(CAMPUS_PREFERENCE_KEY);
+        }
+      } catch {
+        setCampusPreferenceError(
+          "Could not save your campus preference on this device.",
+        );
+        return false;
+      }
+
+      setFilters((previous) => ({ ...previous, campus }));
+      setCampusPreferenceError(null);
+      return true;
+    },
+    [],
+  );
+  const clearAllFilters = useCallback(() => {
+    const cleared = setCampusPreference(null);
+    setFilters(EMPTY_FILTERS);
+    return cleared;
+  }, [setCampusPreference]);
   const openSheet = useCallback((mode: SheetMode) => setSheetMode(mode), []);
   const closeSheet = useCallback(() => setSheetMode(null), []);
 
@@ -41,13 +102,26 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     () => ({
       filters,
       setFilter,
-      clearFilters,
+      clearFilters: clearAllFilters,
+      campusPreferenceReady,
+      campusPreferenceError,
+      setCampusPreference,
       activeCount: countActiveFilters(filters),
       sheetMode,
       openSheet,
       closeSheet,
     }),
-    [filters, setFilter, clearFilters, sheetMode, openSheet, closeSheet],
+    [
+      filters,
+      setFilter,
+      clearAllFilters,
+      campusPreferenceReady,
+      campusPreferenceError,
+      setCampusPreference,
+      sheetMode,
+      openSheet,
+      closeSheet,
+    ],
   );
 
   return <FiltersContext.Provider value={value}>{children}</FiltersContext.Provider>;

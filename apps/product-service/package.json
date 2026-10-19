@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file-if-exists=.env --import tsx --watch src/index.ts",
-    "build": "tsc",
+    "predev": "pnpm --filter @repo/product-db run build",
+    "build": "pnpm --filter @repo/product-db run build && tsc",
     "start": "node --env-file-if-exists=.env dist/index.js",
     "check-types": "tsc --noEmit",
     "test": "node --import tsx --test src/lib/*.test.ts src/middleware/*.test.ts"

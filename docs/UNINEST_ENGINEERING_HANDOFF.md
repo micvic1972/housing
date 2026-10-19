@@ -315,3 +315,87 @@ pnpm.cmd --filter admin run lint
 ```
 
 Do not commit, push, deploy, or apply migrations without explicit permission.
+
+## Current recheck — 2026-10-18
+
+This section records the current state and supersedes earlier conflicting
+runtime and verification notes above.
+
+- The existing dirty worktree was preserved. It already contained deployment
+  changes in `.gitignore`, the package manifests, the product-db client, three
+  untracked `.env.example` files, `docs/DEPLOYMENT.md`, and the product-db
+  TypeScript config. No commit, reset, migration, or data write was performed.
+- `prisma validate` passed. The read-only diff from the configured database to
+  `schema.prisma` reported no difference. `migrate status` still reports both
+  historical migrations as pending, and a read-only catalog query confirmed
+  that `public._prisma_migrations` is absent. The SQL files describe the
+  Listing/ListingImage baseline plus the campus column, which matches the
+  current schema shape; this does not establish migration history. Do not run
+  `migrate resolve`, deploy, or push until the baseline is explicitly resolved.
+- The database client currently sets `rejectUnauthorized: false`. A
+  read-only probe with certificate verification enabled failed with
+  `SELF_SIGNED_CERT_IN_CHAIN`. The current connection therefore depends on
+  disabled certificate verification. Do not deploy this configuration; obtain
+  the correct Supabase CA through the project dashboard, configure strict
+  verification, and repeat a read-only connection test. No certificate or
+  connection value was printed.
+- Public API smoke checks passed: `/health` 200; `/listings` returned a
+  `data`/`meta` envelope with two records; detail returned the same stable ID;
+  an invalid ID returned 404; and `roomType=shared` returned two matching
+  records. This does not verify admin writes or image upload.
+- The live dataset has only two records and its location/descriptive fields do
+  not look beta-ready. In particular, the area values do not align with the
+  client's fixed area-filter choices. Review and correct listing facts through
+  the admin workflow; do not infer or fabricate location, rating, price, or
+  verification data.
+- Authentication is partially wired: client Clerk middleware gates
+  Inspection, Messages, and Profile; the admin proxy checks the session and
+  allowlist; Fastify independently verifies admin tokens and its allowlist.
+  Profile, Map, Inspection, and Messages are still placeholders. Saved state
+  is client-local; profiles, saved listings, inspections, conversations,
+  messages, and analytics have no persistent schema/API implementation.
+- Name-only inspection found local client/admin/service/database environment
+  files and no tracked non-example env files. The DB package has
+  `DATABASE_URL`/`DIRECT_URL`; the service environment relies on the package
+  loader for database configuration. No environment values were emitted.
+- A targeted scan of current application source found only a test-fixture
+  pattern match; a scan of `packages/product-db/src/client.ts` history found
+  no PostgreSQL URI-like literal. Broader heuristic matches were limited to
+  vendored documentation/examples and the storage test fixture. This scan is
+  not a substitute for provider-side credential rotation.
+- Product-service tests passed (11/11), type-check passed, and build passed.
+  Admin lint/build passed. Client lint passed with four existing
+  `@next/next/no-img-element` warnings; the client production build passed.
+- A focused seven-case check passed for listing status labels/unavailability.
+  Client behavior now surfaces `rented`/`unavailable` from the API `status`
+  field in cards and details, dims those images, and omits availability signals.
+- Browser smoke checks on the built client confirmed a real detail route opens,
+  refresh retains the same listing, Share/copy confirms the URL was copied, and
+  the 360 px viewport has no horizontal page overflow with all four detail
+  tabs visible. The client dev server could not be started on port 3000 because
+  a pre-existing Node listener occupied it; that process was not terminated.
+- A browser console warning confirms the local client currently loads Clerk
+  development keys. Production Clerk keys and production origin allowlists
+  still need dashboard configuration and verification.
+
+### Changes in this recheck
+
+- Added `apps/client/app/lib/listing-status.ts` and wired it into
+  `ListingCard.tsx` and `ListingDetail.tsx` so publication status cannot be
+  mistaken for availability.
+- Updated `ListingCard.module.css` and `ListingDetail.module.css` for
+  unavailable listings and compact mobile detail tabs.
+- Updated this handoff and `docs/DEPLOYMENT.md` with the verified TLS and
+  migration blockers.
+
+### Next safest actions
+
+1. Reconcile the existing database migration baseline read-only and obtain
+   explicit approval before any `migrate resolve` or schema-changing command.
+2. Configure the Supabase CA and make certificate-verifying DB access pass
+   before deployment.
+3. Replace placeholder listing content using the admin UI, then re-run search,
+   campus/area/price, and status acceptance checks.
+4. Verify a real Clerk-authenticated upload and public image retrieval.
+5. Only after the baseline is safe, implement persisted saved listings as the
+   first new user-data feature, with ownership and duplicate tests.

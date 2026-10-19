@@ -17,7 +17,7 @@
 import type { Listing, RoomType } from "../home/listingcard/types";
 import type { FilterFields } from "./filter-types";
 
-const ROOM_LABELS: Record<RoomType, string> = {
+export const ROOM_LABELS: Record<RoomType, string> = {
   single: "Single room",
   "self-contained": "Self-contain",
   shared: "Shared room",
@@ -34,9 +34,8 @@ export function listingFilterFields(item: Listing): FilterFields {
     price: item.pricing.amount,
     room: ROOM_LABELS[item.roomType],
     area: item.location.area,
-    verified: item.verified,
-    text: `${item.name} ${item.location.area} ${item.location.campus ?? ""} ${item.insight ?? ""}`,
-    km: item.location.distanceFromUniversityKm,
+    campus: item.location.campus,
+    text: `${item.name} ${item.location.area} ${item.location.campus ?? ""} ${item.location.landmark ?? ""} ${ROOM_LABELS[item.roomType]} ${item.amenities.join(" ")} ${item.insight ?? ""} ${item.status}`,
     owner: item.contact?.contactType
       ? item.contact.contactType === "owner"
       : undefined,
@@ -45,6 +44,9 @@ export function listingFilterFields(item: Listing): FilterFields {
     lowUpfront:
       upfrontYears === undefined ? undefined : upfrontYears <= 1,
     gated: item.safety?.isGatedCompound,
-    available: item.kind === "available" && item.status === "active",
+    available:
+      item.kind !== "rented" &&
+      item.status !== "rented" &&
+      item.status !== "unavailable",
   };
 }

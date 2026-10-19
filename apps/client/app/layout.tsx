@@ -6,11 +6,12 @@ import "./globals.css";
 import AppShell from "./components/layout/appshell/AppShell";
 import { FiltersProvider } from "./components/filter/FilterProvider";
 import { ListingsProvider } from "./lib/listings-provider";
+import { SavedListingsProvider } from "./lib/saved-listings";
 import { isClientClerkConfigured } from "./lib/clerk-config";
 
 export const metadata: Metadata = {
-  title: { default: "UniNest", template: "%s | UniNest" },
-  description: "Find verified student accommodation near UNIDEL.",
+  title: { default: "Delta Housing", template: "%s | Delta Housing" },
+  description: "Find student accommodation around UNIDEL.",
 };
 
 export const viewport: Viewport = {
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const app = (
     <FiltersProvider>
       <ListingsProvider>
-        <AppShell>{children}</AppShell>
+        <SavedListingsProvider>
+          <AppShell>{children}</AppShell>
+        </SavedListingsProvider>
       </ListingsProvider>
     </FiltersProvider>
   );

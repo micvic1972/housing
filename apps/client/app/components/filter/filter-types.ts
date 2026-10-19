@@ -4,12 +4,10 @@ export type BudgetBand = "lt" | "mid" | "hi";
 
 /** What the student has chosen. `null` / `false` / "" means "not filtering by this". */
 export type Filters = {
+  campus: string | null;
   budget: BudgetBand | null;
   room: string | null;
   area: string | null;
-  /** Furthest walk from the gate, in km. null = any distance. */
-  maxKm: number | null;
-  verified: boolean;
   /** Only places where you deal with the owner, not an agent. */
   ownerOnly: boolean;
   /** Only places where "no inspection fee" is CONFIRMED. */
@@ -27,7 +25,7 @@ export type Filters = {
 export type FilterKey = keyof Filters;
 
 /** Which part of the sheet is open. "all" also shows the search box and every group. */
-export type SheetMode = "all" | "uni" | "budget" | "room" | "area" | "more";
+export type SheetMode = "all" | "campus" | "budget" | "room" | "area" | "more";
 
 /**
  * The only fields the filters need from a listing.
@@ -41,11 +39,9 @@ export type FilterFields = {
   price: number;
   room: string;
   area: string;
-  verified: boolean;
+  campus?: string;
   /** Text the search box looks inside, including campus when reported. */
   text: string;
-  /** Walk from the gate in km. undefined = unknown. */
-  km?: number;
   /** true only when "no inspection fee" is confirmed. */
   noFee?: boolean;
   /** true only when you deal directly with the owner. */

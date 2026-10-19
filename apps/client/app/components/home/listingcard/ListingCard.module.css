@@ -1,19 +1,16 @@
-/* No box, no border, no button. The photo IS the card, text hangs underneath. */
+/* Photo-first card; the text and actions sit underneath. */
 .card {
-  position: relative; /* the name's ::after stretches to THIS box */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
   width: 100%;
   min-width: 0;
   text-align: left;
-  cursor: pointer;
 }
 
-/* LAYERS inside the card (higher number = on top):
-   1  the stretched name overlay (.open::after)
-   2  the photo area (.media), so swipes reach the carousel
-   3  the heart, so tapping it never opens the sheet */
+/* The photo area sits above the image strip; the save and Quick View controls
+   are layered above the photos so their actions remain independent. */
 .media {
   position: relative;
   z-index: 2;
@@ -43,6 +40,7 @@
   touch-action: pan-x pan-y;
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 .scroller::-webkit-scrollbar {
   display: none;
@@ -63,7 +61,7 @@
   height: 100%;
   object-fit: cover;
 }
-.rented .img {
+.unavailable .img {
   filter: grayscale(1) brightness(0.7);
 }
 
@@ -170,6 +168,10 @@
   outline: 2px solid var(--primary-soft);
   outline-offset: 2px;
 }
+.scroller:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: -3px;
+}
 
 /* 44px tap area, 30px visible circle. Top layer (z-index 3). */
 .heart {
@@ -200,6 +202,10 @@
 .heartOn svg {
   fill: var(--urgent);
 }
+.heart:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
 
 .body {
   display: flex;
@@ -210,6 +216,8 @@
 }
 
 .titleRow {
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -234,36 +242,112 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: inherit;
-  text-decoration: none;
-}
-/* The stretched tap area over the whole card. Layer 1, so the photo (2) and
-   heart (3) sit above it. */
-.open::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: var(--radius-control);
+  cursor: pointer;
 }
 .open:focus-visible {
-  outline: none;
-}
-.open:focus-visible::after {
   outline: 2px solid var(--primary-soft);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-.rating {
+.menu {
+  position: relative;
   flex: none;
+  align-self: center;
+}
+
+.menu summary {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu summary:hover,
+.menu[open] summary {
+  background: var(--muted-tint);
+  color: var(--text);
+}
+
+.menu summary:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+
+.menuPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 178px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(2, 6, 23, 0.25);
+}
+
+.menuPanel button,
+.menuPanel a {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menuPanel button:hover,
+.menuPanel a:hover {
+  background: var(--muted-tint);
+}
+
+.menuPanel button:focus-visible,
+.menuPanel a:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: -2px;
+}
+
+.fullPage {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
+  width: fit-content;
+  margin-top: 2px;
+  color: var(--primary-soft);
   font-size: 12.5px;
   font-weight: 650;
+  text-decoration: none;
 }
-.rating svg {
-  fill: var(--text);
+.fullPage:hover {
+  text-decoration: underline;
+}
+.fullPage:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.shareFeedback {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .sub {

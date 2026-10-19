@@ -135,6 +135,13 @@
   color: var(--text-muted);
 }
 
+.preferenceError {
+  margin: 10px 0 0;
+  color: var(--urgent);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 /* "More" tab: on/off switch rows. */
 .switchRow {
   width: 100%;

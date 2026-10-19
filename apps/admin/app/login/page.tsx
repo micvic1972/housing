@@ -8,10 +8,10 @@ export default function AdminLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
       <section className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-6 shadow-sm">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-primary">UniNest</p>
+          <p className="text-sm font-semibold text-primary">Delta Housing</p>
           <h1 className="text-2xl font-bold tracking-tight">Admin sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Use your UniNest administrator account to manage listings and photos.
+            Use your Delta Housing administrator account to manage listings and photos.
           </p>
         </div>
         {clerkAdminIsConfigured() ? (

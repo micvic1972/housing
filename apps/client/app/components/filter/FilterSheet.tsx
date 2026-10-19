@@ -6,7 +6,7 @@
 // Tabs: Budget · Room · Area · More. Budget is first. One tab shows at a time
 // so each view fits without a long scroll.
 //
-//   Area tab: an area, plus how far you will walk from the gate.
+//   Area tab: areas are drawn from currently loaded listing records.
 //   More tab: six on/off switches in four groups, each answering one of the
 //             student's jobs (trust, payment, safety, availability).
 //
@@ -22,22 +22,21 @@
 import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import BottomSheet from "../ui/bottomsheet/BottomSheet";
 import { useListings } from "../../lib/listings-provider";
+import { CAMPUSES } from "../../config/campuses";
 import {
-  AREA_OPTIONS,
   BUDGET_OPTIONS,
-  DISTANCE_OPTIONS,
-  ROOM_OPTIONS,
   applyFilters,
   countMoreFilters,
 } from "./filter-config";
 import type { SheetMode } from "./filter-types";
 import { useFilters } from "./FilterProvider";
-import { listingFilterFields } from "./listing-fields";
+import { listingFilterFields, ROOM_LABELS } from "./listing-fields";
 import styles from "./FilterSheet.module.css";
 
-type TabId = "budget" | "room" | "area" | "more";
+type TabId = "campus" | "budget" | "room" | "area" | "more";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "campus", label: "Campus" },
   { id: "budget", label: "Budget" },
   { id: "room", label: "Room" },
   { id: "area", label: "Area" },
@@ -47,7 +46,6 @@ const TABS: { id: TabId; label: string }[] = [
 // The switches in the More tab, grouped by the question they answer.
 // To add a switch: add its key to Filters (filter-types.ts), then add a row here.
 type MoreKey =
-  | "verified"
   | "ownerOnly"
   | "noFee"
   | "lowUpfront"
@@ -61,11 +59,6 @@ const MORE_GROUPS: {
   {
     title: "Trust",
     items: [
-      {
-        key: "verified",
-        title: "Verified only",
-        hint: "Only places UniNest has verified",
-      },
       {
         key: "ownerOnly",
         title: "Owner, not an agent",
@@ -111,9 +104,10 @@ const MORE_GROUPS: {
 ];
 
 // Which tab opens first depends on which chip the student tapped.
-// The UNIDEL chip and the search icon ("uni" and "all") open on Budget.
 function startTab(mode: SheetMode): TabId {
-  return mode === "room" || mode === "area" || mode === "more" ? mode : "budget";
+  return mode === "campus" || mode === "room" || mode === "area" || mode === "more"
+    ? mode
+    : "budget";
 }
 
 // ----------------------------------------------------------------------------
@@ -121,7 +115,14 @@ function startTab(mode: SheetMode): TabId {
 // ----------------------------------------------------------------------------
 
 export function FilterSheet() {
-  const { filters, sheetMode, closeSheet, clearFilters, activeCount } =
+  const {
+    filters,
+    sheetMode,
+    closeSheet,
+    clearFilters,
+    activeCount,
+    campusPreferenceError,
+  } =
     useFilters();
 
   // Live count: the same filtering the feed uses, so they always agree.
@@ -166,6 +167,11 @@ export function FilterSheet() {
         </div>
       }
     >
+      {campusPreferenceError ? (
+        <p className={styles.preferenceError} role="alert">
+          {campusPreferenceError}
+        </p>
+      ) : null}
       {/* BottomSheet only mounts its children while open, so FilterPanel starts
           fresh on the right tab every time the sheet opens. */}
       <FilterPanel mode={sheetMode ?? "budget"} />
@@ -176,7 +182,7 @@ export function FilterSheet() {
 export default FilterSheet;
 
 // ----------------------------------------------------------------------------
-// One tappable option (a room type, an area, a budget band, a distance).
+// One tappable option (a room type, an area, or a budget band).
 // ----------------------------------------------------------------------------
 
 function Option({
@@ -239,16 +245,18 @@ function SwitchRow({
 // ----------------------------------------------------------------------------
 
 function FilterPanel({ mode }: { mode: SheetMode }) {
-  const { filters, setFilter } = useFilters();
+  const { filters, setFilter, setCampusPreference } = useFilters();
+  const { listings } = useListings();
   const [tab, setTab] = useState<TabId>(() => startTab(mode));
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const uid = useId();
 
   // A small dot on a tab means "a filter is on in here".
   const isOn: Record<TabId, boolean> = {
+    campus: filters.campus !== null,
     budget: filters.budget !== null,
     room: filters.room !== null,
-    area: filters.area !== null || filters.maxKm !== null,
+    area: filters.area !== null,
     more: countMoreFilters(filters) > 0,
   };
 
@@ -306,6 +314,29 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
         id={`${uid}-panel-${tab}`}
         aria-labelledby={`${uid}-tab-${tab}`}
       >
+        {tab === "campus" ? (
+          <>
+            <p className={styles.hint}>
+              Filter by a campus explicitly recorded on each listing. This is a
+              manual preference, not a course-to-campus recommendation.
+            </p>
+            <div className={styles.options}>
+              {CAMPUSES.map((campus) => (
+                <Option
+                  key={campus.id}
+                  label={campus.label}
+                  selected={filters.campus === campus.id}
+                  onClick={() =>
+                    setCampusPreference(
+                      filters.campus === campus.id ? null : campus.id,
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
+
         {tab === "budget" ? (
           <>
             <div className={styles.options}>
@@ -320,21 +351,25 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
                 />
               ))}
             </div>
-            <p className={styles.hint}>Rent per year. Tap again to clear.</p>
+            <p className={styles.hint}>
+              Based on the listed amount. Check each listing’s pricing period.
+            </p>
           </>
         ) : null}
 
         {tab === "room" ? (
           <>
             <div className={styles.options}>
-              {ROOM_OPTIONS.map((r) => (
+              {[...new Set(listings.map((listing) => ROOM_LABELS[listing.roomType]))]
+                .filter(Boolean)
+                .map((r) => (
                 <Option
                   key={r}
                   label={r}
                   selected={filters.room === r}
                   onClick={() => setFilter("room", filters.room === r ? null : r)}
                 />
-              ))}
+                ))}
             </div>
             <p className={styles.hint}>Tap again to clear.</p>
           </>
@@ -344,28 +379,17 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
           <>
             <h3 className={styles.groupTitle}>Area</h3>
             <div className={styles.options}>
-              {AREA_OPTIONS.map((a) => (
+              {[...new Set(listings.map((listing) => listing.location.area))]
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b))
+                .map((a) => (
                 <Option
                   key={a}
                   label={a}
                   selected={filters.area === a}
                   onClick={() => setFilter("area", filters.area === a ? null : a)}
                 />
-              ))}
-            </div>
-
-            <h3 className={styles.groupTitle}>Walk from the gate</h3>
-            <div className={styles.options}>
-              {DISTANCE_OPTIONS.map((d) => (
-                <Option
-                  key={d.value}
-                  label={d.label}
-                  selected={filters.maxKm === d.value}
-                  onClick={() =>
-                    setFilter("maxKm", filters.maxKm === d.value ? null : d.value)
-                  }
-                />
-              ))}
+                ))}
             </div>
             <p className={styles.hint}>Tap again to clear.</p>
           </>

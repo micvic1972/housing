@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import ListingDetail from "../../components/home/listingcard/ListingDetail";
 import type { Listing } from "../../components/home/listingcard/types";
 import { apiBase } from "../../lib/api-base";
+import { shareListing } from "../../lib/share-listing";
+import { useSavedListings } from "../../lib/saved-listings";
 import type { ApiListing } from "../../lib/map-listing";
 import { mapListing } from "../../lib/map-listing";
 import styles from "./page.module.css";
@@ -35,9 +37,22 @@ export default function ListingPage() {
   const pageTitle =
     pageState.status === "ready" ? pageState.listing.name : null;
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
+  const {
+    savedIds,
+    ready: savedReady,
+    error: savedError,
+    toggleSaved,
+  } = useSavedListings();
 
   useEffect(() => {
     const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      controller.abort();
+      setRequestState({
+        key: requestKey,
+        state: { status: "error" },
+      });
+    }, 15_000);
 
     Promise.resolve()
       .then(() =>
@@ -70,9 +85,15 @@ export default function ListingPage() {
         if (!controller.signal.aborted) {
           setRequestState({ key: requestKey, state: { status: "error" } });
         }
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
       });
 
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, [id, requestKey]);
 
   useEffect(() => {
@@ -83,53 +104,13 @@ export default function ListingPage() {
   }, [shareStatus]);
 
   useEffect(() => {
-    if (pageTitle) document.title = `${pageTitle} | UniNest`;
+    if (pageTitle) document.title = `${pageTitle} | Delta Housing`;
   }, [pageTitle]);
-
-  async function copyUrl(url: string) {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(url);
-        return;
-      } catch {
-        // Try the legacy copy path for non-secure LAN origins.
-      }
-    }
-
-    const input = document.createElement("textarea");
-    input.value = url;
-    input.setAttribute("readonly", "");
-    input.style.position = "fixed";
-    input.style.left = "-9999px";
-    document.body.appendChild(input);
-    let copied = false;
-    try {
-      input.focus();
-      input.select();
-      copied = document.execCommand("copy");
-    } finally {
-      input.remove();
-    }
-    if (!copied) throw new Error("Clipboard access is unavailable");
-  }
 
   async function sharePageUrl(listingName: string) {
     try {
-      const url = window.location.href;
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: listingName, url });
-          setShareStatus("shared");
-          return;
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return;
-          }
-        }
-      }
-
-      await copyUrl(url);
-      setShareStatus("copied");
+      const result = await shareListing({ id, name: listingName });
+      if (result !== "cancelled") setShareStatus(result);
     } catch {
       setShareStatus("error");
     }
@@ -146,17 +127,28 @@ export default function ListingPage() {
             {pageTitle ?? "Listing details"}
           </span>
           {pageState.status === "ready" ? (
-            <button
-              type="button"
-              className={styles.shareButton}
-              onClick={() => sharePageUrl(pageState.listing.name)}
-            >
-              {shareStatus === "shared"
-                ? "Shared"
-                : shareStatus === "copied"
-                  ? "Link copied"
-                  : "Share / copy"}
-            </button>
+            <div className={styles.headerActions}>
+              <button
+                type="button"
+                className={styles.saveButton}
+                disabled={!savedReady}
+                aria-pressed={savedIds.has(pageState.listing.id)}
+                onClick={() => toggleSaved(pageState.listing.id)}
+              >
+                {savedIds.has(pageState.listing.id) ? "Saved" : "Save"}
+              </button>
+              <button
+                type="button"
+                className={styles.shareButton}
+                onClick={() => sharePageUrl(pageState.listing.name)}
+              >
+                {shareStatus === "shared"
+                  ? "Shared"
+                  : shareStatus === "copied"
+                    ? "Link copied"
+                    : "Share"}
+              </button>
+            </div>
           ) : null}
         </div>
       </header>
@@ -225,6 +217,12 @@ export default function ListingPage() {
                   : shareStatus === "copied"
                     ? "The listing link is ready to share."
                     : "Could not copy the link here. You can copy the page address from your browser."}
+              </p>
+            ) : null}
+            {savedError ? (
+              <p className={styles.feedback} role="alert">
+                {savedError} Saved places are stored on this device only and
+                are not synced to an account.
               </p>
             ) : null}
             <article
