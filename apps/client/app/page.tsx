@@ -80,7 +80,7 @@ export default function Page() {
           <section className={styles.loadingState} role="status">
             <div className={styles.stateHeading}>
               <h1>Find student accommodation at UNIDEL</h1>
-              <p>Loading current listings…</p>
+              <p>Loading current listings and applying your filters…</p>
             </div>
             <div className={styles.skeletonGrid} aria-hidden="true">
               {Array.from({ length: 4 }, (_, index) => (

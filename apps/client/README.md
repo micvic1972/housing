@@ -29,6 +29,8 @@ variables in the ignored `apps/client/.env.local` file and restart the client:
 Use the API base URL already configured for your local product-service. Do not
 commit `.env.local` or share key values. When Clerk is not configured, protected
 routes redirect to a setup message rather than exposing the placeholder pages.
+For the default local product-service port, set
+`NEXT_PUBLIC_API_URL=http://localhost:4000` in `.env.local`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

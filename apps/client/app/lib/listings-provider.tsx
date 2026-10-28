@@ -61,7 +61,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
         status: "error",
         reload,
       }));
-    }, 15_000);
+    }, 8_000);
 
     Promise.resolve()
       .then(() =>

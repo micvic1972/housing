@@ -33,7 +33,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import Link from "next/link";
-import { Check, Heart, Minus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarDays, Check, Heart, MessageCircle, Minus } from "lucide-react";
 import type { Listing } from "./types";
 import { placeholderScene } from "./placeholder-scene";
 import { getSignals } from "./ListingCard";
@@ -43,6 +44,7 @@ import {
   getListingStatusLabel,
   isListingUnavailable,
 } from "../../../lib/listing-status";
+import { useStudentActivity } from "../../../lib/student-activity";
 import styles from "./ListingDetail.module.css";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
@@ -67,16 +69,27 @@ function Hero({
   // Same rule as the card: real photo if there is a url, otherwise draw the
   // placeholder for that photo position (0 outside, 1 room, 2 compound).
   const slides = useMemo(() => {
-    const source =
-      listing.images && listing.images.length > 0
-        ? listing.images
-        : [{ id: `${listing.id}-ph`, url: "", alt: listing.name }];
+    const source = listing.images.filter((image) => image.url.trim());
+
+    if (source.length === 0) {
+      const fallback = placeholderScene(listing.id, isBuild, 0);
+      return [
+        {
+          key: `${listing.id}-placeholder`,
+          alt: `${listing.name} illustration; photo unavailable`,
+          src: fallback,
+          fallback,
+          illustrative: true,
+        },
+      ];
+    }
 
     return source.map((img, i) => ({
       key: img.id,
-      alt: img.alt,
-      src: img.url || placeholderScene(listing.id, isBuild, i),
+      alt: img.alt || listing.name,
+      src: img.url,
       fallback: placeholderScene(listing.id, isBuild, i),
+      illustrative: false,
     }));
   }, [listing.id, listing.images, listing.name, isBuild]);
 
@@ -84,6 +97,10 @@ function Hero({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef(0);
   const [active, setActive] = useState(0);
+  const [failedSlides, setFailedSlides] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const activeSlide = slides[Math.min(active, count - 1)];
 
   // Update the counter as the student swipes. Once per animation frame.
   const handleScroll = useCallback(() => {
@@ -142,23 +159,34 @@ function Hero({
             <img
               className={styles.heroImg}
               src={s.src}
-              alt={s.alt}
+              alt={
+                s.illustrative || failedSlides.has(s.key)
+                  ? `${listing.name} illustration; photo unavailable`
+                  : s.alt
+              }
               draggable={false}
               onError={(event) => {
                 event.currentTarget.onerror = null;
                 event.currentTarget.src = s.fallback;
+                setFailedSlides((previous) => new Set(previous).add(s.key));
               }}
             />
           </div>
         ))}
       </div>
 
+      {activeSlide.illustrative || failedSlides.has(activeSlide.key) ? (
+        <span className={styles.imageNotice}>
+          Illustration · photo unavailable
+        </span>
+      ) : null}
+
       {count > 1 ? (
         <span className={styles.counter} aria-hidden>
           {active + 1} / {count}
         </span>
       ) : null}
-    </div >
+    </div>
   );
 }
 
@@ -171,7 +199,8 @@ function OverviewTab({ listing }: { listing: Listing }) {
     <>
       <h3 className={styles.sectionTitle}>About this place</h3>
       <p className={styles.lead}>
-        {listing.insight || "No description has been provided for this listing."}
+        {listing.insight ||
+          "No description has been provided for this listing."}
       </p>
 
       <dl className={styles.rows}>
@@ -463,8 +492,40 @@ export default function ListingDetail({
   presentation?: "sheet" | "page";
 }) {
   const [tab, setTab] = useState<TabId>("overview");
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const uid = useId();
+  const router = useRouter();
+  const {
+    inspections,
+    ready: activityReady,
+    error: activityError,
+    requestInspection,
+    startConversation,
+  } = useStudentActivity();
+  const activeInspection = inspections.find(
+    (inspection) =>
+      inspection.listingId === listing.id &&
+      (inspection.status === "requested" || inspection.status === "confirmed"),
+  );
+
+  function requestLocalInspection() {
+    const saved = requestInspection(listing.id);
+    setActionMessage(
+      saved
+        ? "Demo request saved on this device only. It has not been sent to the property contact."
+        : "The demo request could not be saved on this device.",
+    );
+  }
+
+  function openLocalConversation() {
+    const conversationId = startConversation(listing.id);
+    if (!conversationId) {
+      setActionMessage("The local demo conversation could not be created.");
+      return;
+    }
+    router.push(`/messages/${encodeURIComponent(conversationId)}`);
+  }
 
   const signals = getSignals(listing);
   const statusLabel = getListingStatusLabel(listing);
@@ -580,6 +641,53 @@ export default function ListingDetail({
         {tab === "costs" ? <CostsTab listing={listing} /> : null}
         {tab === "location" ? <LocationTab listing={listing} /> : null}
       </div>
+
+      <section className={styles.studentActions} aria-label="Student actions">
+        <div>
+          <p className={styles.actionEyebrow}>Next steps · local prototype</p>
+          <p className={styles.actionNote}>
+            These demo actions stay on this device. They don’t contact a
+            landlord or confirm an appointment.
+          </p>
+        </div>
+        {activeInspection ? (
+          <p className={styles.actionState} role="status">
+            Inspection request saved locally ·{" "}
+            {activeInspection.status === "confirmed"
+              ? "confirmed"
+              : "waiting for a real contact"}
+          </p>
+        ) : (
+          <button
+            type="button"
+            className={styles.actionButton}
+            disabled={!activityReady}
+            onClick={requestLocalInspection}
+          >
+            <CalendarDays size={17} aria-hidden />
+            Request inspection
+          </button>
+        )}
+        <button
+          type="button"
+          className={styles.actionSecondary}
+          disabled={!activityReady}
+          onClick={openLocalConversation}
+        >
+          <MessageCircle size={17} aria-hidden />
+          Open local message demo
+        </button>
+        {actionMessage ? (
+          <p className={styles.actionState} role="status">
+            {actionMessage}
+          </p>
+        ) : null}
+        {activityError ? (
+          <p className={styles.actionError} role="alert">
+            {activityError}
+          </p>
+        ) : null}
+      </section>
     </div>
   );
 }

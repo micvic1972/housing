@@ -75,11 +75,14 @@
 
 .skeletonGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 16px;
+  justify-items: center;
 }
 
 .skeletonCard {
+  width: 100%;
+  max-width: 340px;
   min-width: 0;
   display: grid;
   align-content: start;
@@ -101,7 +104,7 @@
 }
 
 .skeletonPhoto {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   border-radius: var(--radius-control);
 }
 
@@ -179,21 +182,22 @@
   }
 }
 
-@media (max-width: 900px) {
-  .skeletonGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 640px) {
-  .skeletonGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px 12px;
-  }
-
   .stateCard {
     margin: 20px 0;
     padding: 20px;
+  }
+}
+
+@media (min-width: 600px) {
+  .skeletonGrid {
+    gap: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .skeletonGrid {
+    gap: 20px;
   }
 }
 

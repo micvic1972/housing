@@ -12,7 +12,10 @@ export async function proxyProductService(
   { method = "GET", body, contentType }: ProxyOptions = {},
 ) {
   const apiBase =
-    process.env.PRODUCT_SERVICE_API_URL ?? process.env.NEXT_PUBLIC_API_URL;
+    process.env.PRODUCT_SERVICE_API_URL ??
+    (process.env.NODE_ENV === "development"
+      ? "http://localhost:4000"
+      : process.env.NEXT_PUBLIC_API_URL);
   if (!apiBase) {
     return NextResponse.json(
       { error: "The admin API connection is not configured on the server." },

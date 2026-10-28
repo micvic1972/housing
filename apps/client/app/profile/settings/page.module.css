@@ -1,0 +1,104 @@
+.page {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.header {
+  max-width: 700px;
+  margin-bottom: 22px;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 38px);
+}
+
+.header > p:last-child,
+.preference > p,
+.account > p {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.preference,
+.account,
+.notice {
+  margin: 0 0 18px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.preference h2,
+.account h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.preference > p,
+.account > p {
+  margin: 7px 0 14px;
+  font-size: 14px;
+}
+
+.preference label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.preference select {
+  width: 100%;
+  max-width: 420px;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--bg);
+}
+
+.error {
+  color: var(--urgent);
+  font-size: 13px;
+}
+
+.account {
+  overflow: auto;
+}
+
+.back {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.notice {
+  color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+  .preference,
+  .account,
+  .notice {
+    padding: 15px;
+  }
+}

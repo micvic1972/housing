@@ -63,7 +63,7 @@ const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 // Trust / payment signals: at most two, warnings first.
 // ----------------------------------------------------------------------------
 
- export type Signal = {
+export type Signal = {
   text: string;
   tone: "warn" | "good" | "neutral";
 };
@@ -103,19 +103,14 @@ function getPhotoChip(
   const text = getListingStatusLabel(l);
   if (!text) return null;
 
-  const constructionProgress =
-    l.kind === "construction" && l.constructionProgress != null
-      ? `${l.constructionProgress}% built`
-      : null;
-  const label = constructionProgress ?? text;
   const icon =
-    label === "Under construction" || constructionProgress
+    text === "Under construction"
       ? "hat"
-      : label === "Frees up soon"
+      : text === "Frees up soon"
         ? "clock"
         : null;
 
-  return { text: label, icon };
+  return { text, icon };
 }
 
 // ----------------------------------------------------------------------------
@@ -149,9 +144,10 @@ export function ListingCard({
       return [
         {
           key: `${listing.id}-placeholder`,
-          alt: `${listing.name} illustration`,
+          alt: `${listing.name} illustration; photo unavailable`,
           src: fallback,
           fallback,
+          illustrative: true,
         },
       ];
     }
@@ -160,6 +156,7 @@ export function ListingCard({
       alt: img.alt || listing.name,
       src: img.url,
       fallback: placeholderScene(listing.id, isBuild, i),
+      illustrative: false,
     }));
   }, [listing.id, listing.images, listing.name, isBuild]);
 
@@ -170,6 +167,12 @@ export function ListingCard({
 
   // Which photo is showing (drives the active dot).
   const [active, setActive] = useState(0);
+  const [failedSlides, setFailedSlides] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const activeSlide = slides[Math.min(active, count - 1)];
+  const activeImageUnavailable =
+    activeSlide.illustrative || failedSlides.has(activeSlide.key);
   const [shareStatus, setShareStatus] = useState<
     "idle" | "shared" | "copied" | "error"
   >("idle");
@@ -260,12 +263,17 @@ export function ListingCard({
               <img
                 className={styles.img}
                 src={s.src}
-                alt={s.alt}
+                alt={
+                  s.illustrative || failedSlides.has(s.key)
+                    ? `${listing.name} illustration; photo unavailable`
+                    : s.alt
+                }
                 loading="lazy"
                 draggable={false}
                 onError={(event) => {
                   event.currentTarget.onerror = null;
                   event.currentTarget.src = s.fallback;
+                  setFailedSlides((previous) => new Set(previous).add(s.key));
                 }}
               />
             </div>
@@ -275,6 +283,12 @@ export function ListingCard({
         {/* These trust and carousel indicators are decorative, so their
             pointer-events: none styling lets swipes reach the photo strip. */}
 
+        {activeImageUnavailable ? (
+          <span className={styles.imageNotice}>
+            Illustration · photo unavailable
+          </span>
+        ) : null}
+
         {chip ? (
           <span className={styles.chip}>
             {chip.icon === "hat" ? <HardHat size={12} aria-hidden /> : null}
@@ -283,26 +297,20 @@ export function ListingCard({
           </span>
         ) : null}
 
-        {isBuild && listing.constructionProgress != null ? (
-          <div
-            className={styles.progress}
-            role="progressbar"
-            aria-label="Construction progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={listing.constructionProgress}
-          >
-            <i style={{ width: `${listing.constructionProgress}%` }} />
-          </div>
-        ) : null}
-
         {/* Dots: only when there is more than one photo. */}
         {count > 1 ? (
-          <div className={styles.dots} aria-hidden>
+          <div
+            className={`${styles.dots} ${
+              activeImageUnavailable ? styles.dotsWithNotice : ""
+            }`}
+            aria-hidden
+          >
             {slides.map((s, i) => (
               <span
                 key={s.key}
-                className={`${styles.dot} ${i === active ? styles.dotOn : ""}`}
+                className={`${styles.dot} ${
+                  i === Math.min(active, count - 1) ? styles.dotOn : ""
+                }`}
               />
             ))}
           </div>

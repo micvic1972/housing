@@ -57,6 +57,7 @@
 }
 
 .chip,
+.imageNotice,
 .dots,
 .quickLook,
 .heart span {
@@ -83,20 +84,16 @@
   pointer-events: none;
 }
 
-.progress {
+.imageNotice {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.24);
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
   pointer-events: none;
-}
-
-.progress i {
-  display: block;
-  height: 100%;
-  background: var(--primary-soft);
 }
 
 .dots {
@@ -106,6 +103,10 @@
   min-height: 24px;
   padding: 0 8px;
   pointer-events: none;
+}
+
+.dotsWithNotice {
+  top: 46px;
 }
 
 .dot {
@@ -163,7 +164,9 @@
   position: static;
   width: 34px;
   height: 34px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .heartOn span {

@@ -117,6 +117,19 @@ function redactStorageKey(message: string, config: StorageConfig): string {
     .replace(/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]+/g, "[redacted]");
 }
 
+function sanitizeStorageMessage(
+  message: string,
+  config: StorageConfig,
+): string {
+  return redactStorageKey(message, config)
+    .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(
+      /\b(?:authorization|apikey)\s*[:=]\s*["']?[^,\s"']+/gi,
+      "[redacted credential]",
+    )
+    .replace(/\bhttps?:\/\/[^\s"'<>]+/gi, "[redacted URL]");
+}
+
 async function storageRequestError(
   response: Response,
   operation: string,
@@ -152,7 +165,7 @@ async function storageRequestError(
   return new StorageRequestError(
     response.status,
     operation,
-    redactStorageKey(upstreamMessage, config),
+    sanitizeStorageMessage(upstreamMessage, config),
   );
 }
 
@@ -165,34 +178,16 @@ async function requestPublicBucket(config: StorageConfig): Promise<void> {
     config,
     `bucket/${encodeURIComponent(LISTING_IMAGE_BUCKET)}`,
   );
-  let existing = await fetch(bucketUrl, {
+  const existing = await fetch(bucketUrl, {
     headers: storageHeaders(config),
     cache: "no-store",
   });
 
   if (existing.status === 404) {
-    const created = await fetch(storageUrl(config, "bucket"), {
-      method: "POST",
-      headers: storageHeaders(config, {
-        "content-type": "application/json",
-      }),
-      body: JSON.stringify({
-        id: LISTING_IMAGE_BUCKET,
-        name: LISTING_IMAGE_BUCKET,
-        public: true,
-        file_size_limit: MAX_LISTING_IMAGE_BYTES,
-        allowed_mime_types: [...ALLOWED_CONTENT_TYPES],
-      }),
-      cache: "no-store",
-    });
-    if (created.ok) return;
-    if (created.status !== 409) {
-      throw await storageRequestError(created, "bucket creation", config);
-    }
-    existing = await fetch(bucketUrl, {
-      headers: storageHeaders(config),
-      cache: "no-store",
-    });
+    throw new StorageConfigurationError(
+      "SUPABASE_STORAGE_BUCKET",
+      "The configured Supabase Storage bucket does not exist. Create and configure the bucket explicitly before uploading listing photos.",
+    );
   }
 
   if (!existing.ok) {

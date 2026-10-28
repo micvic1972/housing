@@ -9,7 +9,7 @@
     "build": "pnpm --filter @repo/product-db run build && tsc",
     "start": "node --env-file-if-exists=.env dist/index.js",
     "check-types": "tsc --noEmit",
-    "test": "node --import tsx --test src/lib/*.test.ts src/middleware/*.test.ts"
+    "test": "node --import tsx --test src/lib/*.test.ts src/middleware/*.test.ts src/controller/listing/*.test.ts"
   },
   "dependencies": {
     "@clerk/backend": "^3.25.0",

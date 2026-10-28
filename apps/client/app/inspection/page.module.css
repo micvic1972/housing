@@ -1,0 +1,209 @@
+.page {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.header {
+  max-width: 720px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.12;
+}
+
+.header > p:last-child,
+.cardNote,
+.groupHeading p {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.prototypeNotice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 24px;
+  padding: 13px 15px;
+  border: 1px solid var(--soft-line);
+  border-radius: 14px;
+  background: var(--primary-tint);
+  color: #bfdbfe;
+  font-size: 13px;
+}
+
+.groups {
+  display: grid;
+  gap: 26px;
+}
+
+.groupHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 11px;
+}
+
+.groupHeading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.groupHeading p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.groupHeading > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+  gap: 11px;
+}
+
+.card,
+.empty,
+.state {
+  padding: 17px;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: var(--surface);
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--muted-tint);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.requested {
+  background: var(--primary-tint);
+  color: #bfdbfe;
+}
+
+.confirmed {
+  background: var(--verified-line);
+  color: #99f6e4;
+}
+
+.cancelled {
+  background: var(--urgent-tint);
+  color: #fecdd3;
+}
+
+.requestDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.card h3 {
+  margin: 13px 0 0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.cardNote {
+  margin: 7px 0 0;
+  font-size: 13px;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.secondaryAction,
+.cancelAction,
+.browseLink {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.cancelAction {
+  color: #fecdd3;
+}
+
+.empty,
+.state {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.state button {
+  min-height: 40px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border-radius: 11px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+
+.error {
+  color: var(--urgent);
+}
+
+.browseLink {
+  margin-top: 25px;
+  border-color: var(--soft-line);
+  color: #bfdbfe;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secondaryAction,
+  .cancelAction,
+  .browseLink {
+    scroll-behavior: auto;
+  }
+}
