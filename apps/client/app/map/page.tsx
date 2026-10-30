@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MapPin, List, Map as MapIcon } from "lucide-react";
 import BottomSheet from "../components/ui/bottomsheet/BottomSheet";
 import { FilterBar } from "../components/filter/FilterBar";
@@ -9,8 +9,6 @@ import { SearchSheet } from "../components/filter/SearchSheet";
 import ListingDetail, {
   ListingDetailFooter,
 } from "../components/home/listingcard/ListingDetail";
-import { applyFilters } from "../components/filter/filter-config";
-import { listingFilterFields } from "../components/filter/listing-fields";
 import { useFilters } from "../components/filter/FilterProvider";
 import { useListings } from "../lib/listings-provider";
 import { useSavedListings } from "../lib/saved-listings";
@@ -21,14 +19,27 @@ export default function MapPage() {
   const [view, setView] = useState<"map" | "list">("map");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { filters } = useFilters();
-  const { listings, status, reload } = useListings();
+  const {
+    listings,
+    reload,
+    discoveryListings,
+    discoveryStatus,
+    discoveryCount,
+    discoveryHasMore,
+    discoverySort,
+    setDiscoverySort,
+    setDiscoveryCollection,
+    loadMoreDiscovery,
+  } = useListings();
   const { savedIds, ready: savedReady, toggleSaved } = useSavedListings();
-  const matchingListings = useMemo(
-    () => applyFilters(listings, filters, listingFilterFields),
-    [filters, listings],
-  );
   const selected =
-    listings.find((listing) => listing.id === selectedId) ?? null;
+    discoveryListings.find((listing) => listing.id === selectedId) ??
+    listings.find((listing) => listing.id === selectedId) ??
+    null;
+
+  useEffect(() => {
+    setDiscoveryCollection("all");
+  }, [setDiscoveryCollection]);
 
   return (
     <main className={styles.page}>
@@ -92,13 +103,13 @@ export default function MapPage() {
         </p>
       ) : null}
 
-      {status === "loading" ? (
+      {discoveryStatus === "loading" && discoveryListings.length === 0 ? (
         <p className={styles.state} role="status">
           Loading current listings…
         </p>
       ) : null}
 
-      {status === "error" ? (
+      {discoveryStatus === "error" && discoveryListings.length === 0 ? (
         <section className={styles.state} role="alert">
           <p>Places could not be loaded.</p>
           <button type="button" onClick={reload}>
@@ -107,20 +118,39 @@ export default function MapPage() {
         </section>
       ) : null}
 
-      {status === "ready" && matchingListings.length === 0 ? (
+      {discoveryStatus === "ready" && discoveryCount === 0 ? (
         <section className={styles.state} role="status">
           <h2>No places match these filters</h2>
           <p>Change or clear a filter to see other recorded listings.</p>
         </section>
       ) : null}
 
-      {status === "ready" && matchingListings.length > 0 ? (
+      {discoveryListings.length > 0 ? (
         <section className={styles.results} aria-label="Listing locations">
           <div className={styles.resultsHeading}>
             <h2>Location list</h2>
-            <span>{matchingListings.length} places</span>
+            <label>
+              {discoveryCount} places · Sort{" "}
+              <select
+                aria-label="Sort listings"
+                value={discoverySort}
+                onChange={(event) =>
+                  setDiscoverySort(
+                    event.currentTarget.value as typeof discoverySort,
+                  )
+                }
+              >
+                <option value="relevance">Recommended</option>
+                <option value="newest">Newest</option>
+                <option value="price-asc">Price: low to high</option>
+                <option value="price-desc">Price: high to low</option>
+                <option value="distance-asc">
+                  Nearest (reported distance)
+                </option>
+              </select>
+            </label>
           </div>
-          {matchingListings.map((listing) => (
+          {discoveryListings.map((listing) => (
             <button
               className={styles.locationCard}
               key={listing.id}
@@ -149,6 +179,26 @@ export default function MapPage() {
               </span>
             </button>
           ))}
+          {discoveryStatus !== "error" &&
+          (discoveryHasMore || discoveryStatus === "loading") ? (
+            <button
+              type="button"
+              disabled={discoveryStatus === "loading" || !discoveryHasMore}
+              onClick={loadMoreDiscovery}
+            >
+              {discoveryStatus === "loading"
+                ? "Loading more places…"
+                : "Load more places"}
+            </button>
+          ) : null}
+          {discoveryStatus === "error" && discoveryListings.length > 0 ? (
+            <section className={styles.state} role="alert">
+              <p>More matching listings could not be loaded.</p>
+              <button type="button" onClick={reload}>
+                Retry
+              </button>
+            </section>
+          ) : null}
         </section>
       ) : null}
 

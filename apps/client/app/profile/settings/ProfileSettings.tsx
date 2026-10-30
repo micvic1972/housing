@@ -8,9 +8,15 @@ import { useAppearance } from "../../lib/appearance-provider";
 import styles from "./page.module.css";
 
 export default function ProfileSettings() {
-  const { filters, setCampusPreference, campusPreferenceError } = useFilters();
+  const {
+    filters,
+    setCampusPreference,
+    campusPreferenceError,
+    campusPreferenceReady,
+  } = useFilters();
   const {
     preferences,
+    ready: appearanceReady,
     error: appearanceError,
     setMode,
     setAccent,
@@ -26,12 +32,13 @@ export default function ProfileSettings() {
         </p>
       </header>
 
-      <section className={styles.preference}>
+      <section className={styles.preference} aria-busy={!appearanceReady}>
         <h2>Appearance</h2>
         <p>Choose how Delta Housing looks on this device.</p>
         <label htmlFor="appearance-mode">Color mode</label>
         <select
           id="appearance-mode"
+          disabled={!appearanceReady}
           value={preferences.mode}
           onChange={(event) => {
             const value = event.target.value;
@@ -47,6 +54,7 @@ export default function ProfileSettings() {
         <label htmlFor="appearance-accent">Accent palette</label>
         <select
           id="appearance-accent"
+          disabled={!appearanceReady}
           value={preferences.accent}
           onChange={(event) => {
             const value = event.target.value;
@@ -65,7 +73,7 @@ export default function ProfileSettings() {
         ) : null}
       </section>
 
-      <section className={styles.preference}>
+      <section className={styles.preference} aria-busy={!campusPreferenceReady}>
         <h2>Campus preference</h2>
         <p>
           This filters the same shared listings on Home and Map. It is stored in
@@ -74,6 +82,7 @@ export default function ProfileSettings() {
         <label htmlFor="campus-preference">Show listings for</label>
         <select
           id="campus-preference"
+          disabled={!campusPreferenceReady}
           value={filters.campus ?? ""}
           onChange={(event) => {
             const value = event.target.value;

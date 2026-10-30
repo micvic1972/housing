@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import CampusOnboarding from "./components/home/CampusOnboarding";
 import FeedGrid from "./components/home/feed/FeedGrid";
 import ListingDetail, {
@@ -10,12 +10,9 @@ import BottomSheet from "./components/ui/bottomsheet/BottomSheet";
 import { FilterBar } from "./components/filter/FilterBar";
 import { FilterSheet } from "./components/filter/FilterSheet";
 import { SearchSheet } from "./components/filter/SearchSheet";
-import { applyFilters } from "./components/filter/filter-config";
 import { useFilters } from "./components/filter/FilterProvider";
 import { useListings } from "./lib/listings-provider";
 import { useSavedListings } from "./lib/saved-listings";
-import { isListingUnavailable } from "./lib/listing-status";
-import { listingFilterFields } from "./components/filter/listing-fields";
 import DiscoveryTabs from "./components/home/discovery/DiscoveryTabs";
 import type { FeedId } from "./config/feeds";
 import styles from "./page.module.css";
@@ -23,13 +20,21 @@ import styles from "./page.module.css";
 export default function Page() {
   const [activeFeedId, setActiveFeedId] = useState<FeedId>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const { filters, clearFilters, setCampusPreference, sheetMode } =
+    useFilters();
   const {
-    filters,
-    clearFilters,
-    setCampusPreference,
-    sheetMode,
-  } = useFilters();
-  const { listings, status, reload } = useListings();
+    listings,
+    status,
+    reload,
+    discoveryListings,
+    discoveryStatus,
+    discoveryCount,
+    discoveryHasMore,
+    discoverySort,
+    setDiscoverySort,
+    setDiscoveryCollection,
+    loadMoreDiscovery,
+  } = useListings();
   const {
     savedIds,
     ready: savedReady,
@@ -37,25 +42,14 @@ export default function Page() {
     toggleSaved,
   } = useSavedListings();
 
-  const filteredListings = useMemo(
-    () => applyFilters(listings, filters, listingFilterFields),
-    [listings, filters],
-  );
-  const tabListings = useMemo(() => {
-    if (activeFeedId === "available") {
-      return filteredListings.filter(
-        (listing) => listing.kind === "available" && !isListingUnavailable(listing),
-      );
-    }
-    if (activeFeedId === "construction") {
-      return filteredListings.filter(
-        (listing) =>
-          listing.kind === "construction" || listing.status === "coming-soon",
-      );
-    }
-    return filteredListings;
-  }, [activeFeedId, filteredListings]);
-  const activeListing = listings.find((listing) => listing.id === openId) ?? null;
+  const activeListing =
+    discoveryListings.find((listing) => listing.id === openId) ??
+    listings.find((listing) => listing.id === openId) ??
+    null;
+
+  useEffect(() => {
+    setDiscoveryCollection(activeFeedId);
+  }, [activeFeedId, setDiscoveryCollection]);
 
   function removeCampusPreference() {
     setCampusPreference(null);
@@ -76,7 +70,7 @@ export default function Page() {
           </p>
         ) : null}
 
-        {status === "loading" ? (
+        {discoveryStatus === "loading" && discoveryListings.length === 0 ? (
           <section className={styles.loadingState} role="status">
             <div className={styles.stateHeading}>
               <h1>Find student accommodation at UNIDEL</h1>
@@ -95,7 +89,7 @@ export default function Page() {
           </section>
         ) : null}
 
-        {status === "error" ? (
+        {discoveryStatus === "error" && discoveryListings.length === 0 ? (
           <section className={styles.stateCard} role="alert">
             <p className={styles.stateEyebrow}>Connection problem</p>
             <h1>Places couldn’t be loaded</h1>
@@ -110,7 +104,9 @@ export default function Page() {
           </section>
         ) : null}
 
-        {status === "ready" && listings.length === 0 ? (
+        {discoveryStatus === "ready" &&
+        discoveryCount === 0 &&
+        listings.length === 0 ? (
           <section className={styles.stateCard} role="status">
             <p className={styles.stateEyebrow}>UNIDEL accommodation</p>
             <h1>No places listed yet</h1>
@@ -125,9 +121,9 @@ export default function Page() {
           </section>
         ) : null}
 
-        {status === "ready" &&
-        listings.length > 0 &&
-        filteredListings.length === 0 ? (
+        {discoveryStatus === "ready" &&
+        discoveryCount === 0 &&
+        listings.length > 0 ? (
           <section className={styles.stateCard} role="status">
             <p className={styles.stateEyebrow}>Search results</p>
             <h1>No places match these filters</h1>
@@ -145,43 +141,70 @@ export default function Page() {
           </section>
         ) : null}
 
-        {status === "ready" &&
-        filteredListings.length > 0 &&
-        tabListings.length === 0 ? (
-          <section className={styles.stateCard} role="status">
-            <h1>No listings in this category</h1>
-            <p>Try all listings or adjust your filters.</p>
-            <button
-              type="button"
-              className={styles.stateActionSecondary}
-              onClick={() => setActiveFeedId("all")}
-            >
-              Browse all listings
-            </button>
-          </section>
-        ) : null}
-
-        {status === "ready" && tabListings.length > 0 ? (
+        {discoveryListings.length > 0 ? (
           <>
-            <p className={styles.resultCount} aria-live="polite">
-              {tabListings.length === 1
-                ? "1 listing"
-                : `${tabListings.length} listings`}
-            </p>
+            <div className={styles.resultCount} aria-live="polite">
+              <span>
+                {discoveryCount === 1
+                  ? "1 listing"
+                  : `${discoveryCount} listings`}
+              </span>
+              <label>
+                Sort{" "}
+                <select
+                  aria-label="Sort listings"
+                  value={discoverySort}
+                  onChange={(event) =>
+                    setDiscoverySort(
+                      event.currentTarget.value as typeof discoverySort,
+                    )
+                  }
+                >
+                  <option value="relevance">Recommended</option>
+                  <option value="newest">Newest</option>
+                  <option value="price-asc">Price: low to high</option>
+                  <option value="price-desc">Price: high to low</option>
+                  <option value="distance-asc">
+                    Nearest (reported distance)
+                  </option>
+                </select>
+              </label>
+            </div>
             <FeedGrid
-              listings={tabListings}
+              listings={discoveryListings}
               saved={savedIds}
               savingDisabled={!savedReady}
               onToggleSave={toggleSaved}
               onOpen={setOpenId}
             />
+            {discoveryStatus !== "error" &&
+            (discoveryHasMore || discoveryStatus === "loading") ? (
+              <button
+                className={styles.stateActionSecondary}
+                type="button"
+                disabled={discoveryStatus === "loading" || !discoveryHasMore}
+                onClick={loadMoreDiscovery}
+              >
+                {discoveryStatus === "loading"
+                  ? "Loading more places…"
+                  : "Load more places"}
+              </button>
+            ) : null}
           </>
         ) : null}
 
         {savedError ? (
           <p className={styles.saveError} role="alert">
-            {savedError} Saved places are stored on this device only and are
-            not synced to an account.
+            {savedError} Saved places are stored on this device only and are not
+            synced to an account.
+          </p>
+        ) : null}
+        {discoveryStatus === "error" && discoveryListings.length > 0 ? (
+          <p role="alert" className={styles.saveError}>
+            Could not load more matching places. Retry to refresh results.
+            <button type="button" onClick={reload}>
+              Retry
+            </button>
           </p>
         ) : null}
       </main>
@@ -209,7 +232,12 @@ export default function Page() {
       <FilterSheet />
       <SearchSheet onOpenListing={setOpenId} />
       <CampusOnboarding
-        blocked={Boolean(activeListing) || sheetMode !== null || status !== "ready"}
+        blocked={
+          Boolean(activeListing) ||
+          sheetMode !== null ||
+          status !== "ready" ||
+          discoveryStatus !== "ready"
+        }
       />
     </>
   );

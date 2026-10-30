@@ -9,7 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Where the API lives. Comes from apps/admin/.env.local.
 const API = "/api/admin";
@@ -74,8 +80,21 @@ function createdListingId(value: unknown): string | null {
 }
 
 const KINDS = ["available", "construction", "expiring", "rented"];
-const STATUSES = ["active", "coming-soon", "expiring-soon", "rented", "unavailable"];
-const ROOM_TYPES = ["single", "self-contained", "shared", "studio", "one-bedroom", "two-bedroom"];
+const STATUSES = [
+  "active",
+  "coming-soon",
+  "expiring-soon",
+  "rented",
+  "unavailable",
+];
+const ROOM_TYPES = [
+  "single",
+  "self-contained",
+  "shared",
+  "studio",
+  "one-bedroom",
+  "two-bedroom",
+];
 const PRICE_PERIODS = ["year", "semester", "month"];
 const CONTACT_TYPES = ["owner", "agent", "university-partner"];
 const CHECKS = ["water", "power", "security", "in-person-visit"];
@@ -103,7 +122,15 @@ const DEFAULT_SELECTS: Record<string, string> = {
 };
 
 // One label above one control.
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-2">
       <Label>{label}</Label>
@@ -162,10 +189,19 @@ function CheckGroup({
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-3">
       {options.map((o) => (
-        <label key={o} className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
+        <label
+          key={o}
+          className="flex min-h-11 items-center gap-2 text-sm md:min-h-0"
+        >
           <Checkbox
             checked={selected.includes(o)}
-            onCheckedChange={(on) => onChange(on === true ? [...selected, o] : selected.filter((x) => x !== o))}
+            onCheckedChange={(on) =>
+              onChange(
+                on === true
+                  ? [...selected, o]
+                  : selected.filter((x) => x !== o),
+              )
+            }
           />
           {o}
         </label>
@@ -185,7 +221,9 @@ export default function ListingForm({
 }) {
   const editing = initialListing !== undefined;
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
   const [sel, setSel] = useState<Record<string, string>>(() =>
     initialListing
       ? {
@@ -225,10 +263,12 @@ export default function ListingForm({
     files: File[];
   } | null>(null);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [removingImageId, setRemovingImageId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Short helper so each dropdown is one line below.
-  const pick = (key: string) => (v: string) => setSel((s) => ({ ...s, [key]: v }));
+  const pick = (key: string) => (v: string) =>
+    setSel((s) => ({ ...s, [key]: v }));
 
   async function sendImages(
     listingId: string,
@@ -280,6 +320,35 @@ export default function ListingForm({
     onSaved?.();
   }
 
+  async function removeImage(imageId: string) {
+    if (!editing || removingImageId) return;
+    if (!window.confirm("Remove this photo from the listing and storage?")) {
+      return;
+    }
+
+    setRemovingImageId(imageId);
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `${API}/listings/${encodeURIComponent(initialListing.id)}/images/${encodeURIComponent(imageId)}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        setMessage({ ok: false, text: await responseError(response) });
+        return;
+      }
+      setMessage({ ok: true, text: "Photo removed from the listing." });
+      onSaved?.();
+    } catch {
+      setMessage({
+        ok: false,
+        text: "Could not reach the service. The photo was not removed.",
+      });
+    } finally {
+      setRemovingImageId(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -301,9 +370,10 @@ export default function ListingForm({
       const v = text(k);
       return v === undefined ? undefined : Number(v);
     };
-    const tri = (k: string) => (sel[k] === "yes" ? true : sel[k] === "no" ? false : undefined);
+    const tri = (k: string) =>
+      sel[k] === "yes" ? true : sel[k] === "no" ? false : undefined;
     const optional = <T,>(value: T | undefined) =>
-      editing ? value ?? null : value;
+      editing ? (value ?? null) : value;
 
     const feeStatus = sel.inspectionFeeStatus;
     const expires = text("expiresAt");
@@ -348,7 +418,9 @@ export default function ListingForm({
       popularityScore: optional(num("popularityScore")),
       constructionProgress: optional(num("constructionProgress")),
       // The date box gives "2026-12-31"; the database wants a full date-time.
-      expiresAt: optional(expires ? new Date(expires).toISOString() : undefined),
+      expiresAt: optional(
+        expires ? new Date(expires).toISOString() : undefined,
+      ),
       insight: optional(text("insight")),
     };
 
@@ -367,12 +439,36 @@ export default function ListingForm({
       );
 
       if (!res.ok) {
-        setMessage({ ok: false, text: `Not saved: ${await responseError(res)}` });
+        setMessage({
+          ok: false,
+          text: `Not saved: ${await responseError(res)}`,
+        });
         return;
       }
 
       if (editing) {
-        setMessage({ ok: true, text: "Listing updated." });
+        if (imageFiles.length > 0) {
+          setPendingUpload({
+            listingId: initialListing.id,
+            files: imageFiles,
+          });
+          setUploadingImages(true);
+          const uploadError = await sendImages(initialListing.id, imageFiles);
+          setUploadingImages(false);
+          if (uploadError) {
+            setMessage({
+              ok: false,
+              text: `Listing updated, but photos are pending: ${uploadError}`,
+            });
+            return;
+          }
+          setMessage({
+            ok: true,
+            text: `Listing updated with ${imageFiles.length} photo${imageFiles.length === 1 ? "" : "s"}.`,
+          });
+        } else {
+          setMessage({ ok: true, text: "Listing updated." });
+        }
         onSaved?.();
         onCancel?.();
         return;
@@ -406,12 +502,16 @@ export default function ListingForm({
           ok: true,
           text: `Listing and ${imageFiles.length} photo${imageFiles.length === 1 ? "" : "s"} saved.`,
         });
+        onSaved?.();
       } else {
         setMessage({ ok: true, text: "Saved." });
       }
       resetForm(form);
     } catch {
-      setMessage({ ok: false, text: "Could not reach the API. Is it running?" });
+      setMessage({
+        ok: false,
+        text: "Could not reach the API. Is it running?",
+      });
     } finally {
       setSaving(false);
     }
@@ -428,76 +528,172 @@ export default function ListingForm({
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Name *">
-            <Input name="name" defaultValue={initialListing?.name ?? ""} required className={num16} />
+            <Input
+              name="name"
+              defaultValue={initialListing?.name ?? ""}
+              required
+              className={num16}
+            />
           </Field>
           <Field label="Room type *">
-            <Pick value={sel.roomType} onChange={pick("roomType")} options={pairs(ROOM_TYPES)} />
+            <Pick
+              value={sel.roomType}
+              onChange={pick("roomType")}
+              options={pairs(ROOM_TYPES)}
+            />
           </Field>
           <Field label="Kind *">
-            <Pick value={sel.kind} onChange={pick("kind")} options={pairs(KINDS)} />
+            <Pick
+              value={sel.kind}
+              onChange={pick("kind")}
+              options={pairs(KINDS)}
+            />
           </Field>
           <Field label="Status *">
-            <Pick value={sel.status} onChange={pick("status")} options={pairs(STATUSES)} />
+            <Pick
+              value={sel.status}
+              onChange={pick("status")}
+              options={pairs(STATUSES)}
+            />
           </Field>
           <Field label="Area *">
-            <Input name="area" defaultValue={initialListing?.area ?? ""} required className={num16} />
+            <Input
+              name="area"
+              defaultValue={initialListing?.area ?? ""}
+              required
+              className={num16}
+            />
           </Field>
-          <Field label="Campus it is near" hint="Leave as 'Not reported yet' if you are not sure">
-            <Pick value={sel.campus} onChange={pick("campus")} options={CAMPUS_OPTIONS} />
+          <Field
+            label="Campus it is near"
+            hint="Leave as 'Not reported yet' if you are not sure"
+          >
+            <Pick
+              value={sel.campus}
+              onChange={pick("campus")}
+              options={CAMPUS_OPTIONS}
+            />
           </Field>
           <Field label="Landmark">
-            <Input name="landmark" defaultValue={initialListing?.landmark ?? ""} className={num16} />
+            <Input
+              name="landmark"
+              defaultValue={initialListing?.landmark ?? ""}
+              className={num16}
+            />
           </Field>
           <Field label="Distance from university (km)">
-            <Input name="distanceKm" defaultValue={initialListing?.distanceKm ?? ""} type="number" step="0.1" min="0" inputMode="decimal" className={num16} />
+            <Input
+              name="distanceKm"
+              defaultValue={initialListing?.distanceKm ?? ""}
+              type="number"
+              step="0.1"
+              min="0"
+              inputMode="decimal"
+              className={num16}
+            />
           </Field>
-          <Field label="Amenities" hint="Separate with commas, e.g. water, generator, wifi">
-            <Input name="amenities" defaultValue={initialListing?.amenities.join(", ") ?? ""} className={num16} />
+          <Field
+            label="Amenities"
+            hint="Separate with commas, e.g. water, generator, wifi"
+          >
+            <Input
+              name="amenities"
+              defaultValue={initialListing?.amenities.join(", ") ?? ""}
+              className={num16}
+            />
           </Field>
-          {editing ? (
-            <div className="flex flex-col gap-2 text-sm">
-              <Label>Property photos</Label>
-              <p className="text-muted-foreground">
-                {initialListing.images.length} existing photo
-                {initialListing.images.length === 1 ? "" : "s"}. Existing
-                photos are preserved; photo editing is not available here.
-              </p>
-            </div>
-          ) : (
-            <Field
-              label="Property photos"
-              hint="JPEG, PNG, or WebP. Up to 8 photos, 5 MB each."
-            >
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                className="min-h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:font-medium"
-                disabled={pendingUpload !== null || uploadingImages}
-                multiple
-                onChange={(event) => {
-                  const selected = Array.from(event.currentTarget.files ?? []);
-                  const tooLarge = selected.some(
-                    (file) => file.size > MAX_IMAGE_BYTES,
-                  );
-                  if (selected.length > MAX_IMAGES || tooLarge) {
-                    setImageFiles([]);
-                    event.currentTarget.value = "";
-                    setMessage({
-                      ok: false,
-                      text: `Choose up to ${MAX_IMAGES} photos, each no larger than 5 MB.`,
-                    });
-                    return;
-                  }
-                  setImageFiles(selected);
-                  setMessage(null);
-                }}
-                type="file"
-              />
-            </Field>
-          )}
+          <Field
+            label="Property photos"
+            hint={`JPEG, PNG, or WebP. ${editing ? `${initialListing.images.length} existing; ` : ""}up to ${MAX_IMAGES - (initialListing?.images.length ?? 0)} more, 5 MB each. New photos are appended; existing photos are preserved unless deliberately removed.`}
+          >
+            {editing ? (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {initialListing.images.length} existing photo
+                  {initialListing.images.length === 1 ? "" : "s"}.
+                </p>
+                {initialListing.images.length > 0 ? (
+                  <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {initialListing.images.map((image, index) => (
+                      <li
+                        key={image.id}
+                        className="flex flex-col gap-2 rounded-md border p-2"
+                      >
+                        <img
+                          alt={image.alt}
+                          className="aspect-square w-full rounded object-cover"
+                          src={image.url}
+                        />
+                        <button
+                          aria-label={`Remove photo ${index + 1}`}
+                          className="min-h-10 rounded border text-sm font-medium disabled:opacity-60"
+                          disabled={
+                            saving ||
+                            uploadingImages ||
+                            removingImageId !== null ||
+                            pendingUpload !== null
+                          }
+                          onClick={() => removeImage(image.id)}
+                          type="button"
+                        >
+                          {removingImageId === image.id
+                            ? "Removing…"
+                            : "Remove photo"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              className="min-h-11 w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:font-medium"
+              disabled={
+                pendingUpload !== null ||
+                uploadingImages ||
+                (initialListing?.images.length ?? 0) >= MAX_IMAGES
+              }
+              multiple
+              onChange={(event) => {
+                const selected = Array.from(event.currentTarget.files ?? []);
+                const availableSlots =
+                  MAX_IMAGES - (initialListing?.images.length ?? 0);
+                const tooLarge = selected.some(
+                  (file) => file.size > MAX_IMAGE_BYTES,
+                );
+                const invalidType = selected.some(
+                  (file) =>
+                    !["image/jpeg", "image/png", "image/webp"].includes(
+                      file.type,
+                    ),
+                );
+                if (
+                  selected.length > availableSlots ||
+                  tooLarge ||
+                  invalidType
+                ) {
+                  setImageFiles([]);
+                  event.currentTarget.value = "";
+                  setMessage({
+                    ok: false,
+                    text: invalidType
+                      ? "Choose JPEG, PNG, or WebP photos."
+                      : `Choose up to ${availableSlots} more photos, each no larger than 5 MB.`,
+                  });
+                  return;
+                }
+                setImageFiles(selected);
+                setMessage(null);
+              }}
+              type="file"
+            />
+          </Field>
           {imageFiles.length > 0 ? (
             <div className="md:col-span-2">
               <p className="text-sm font-medium">
-                {imageFiles.length} photo{imageFiles.length === 1 ? "" : "s"} selected
+                {imageFiles.length} photo{imageFiles.length === 1 ? "" : "s"}{" "}
+                selected
               </p>
               <ul className="mt-2 grid gap-1 text-sm text-muted-foreground">
                 {imageFiles.map((file) => (
@@ -529,16 +725,42 @@ export default function ListingForm({
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field label="Price (NGN) *">
-            <Input name="priceAmount" defaultValue={initialListing?.priceAmount ?? ""} type="number" min="0" required inputMode="numeric" className={num16} />
+            <Input
+              name="priceAmount"
+              defaultValue={initialListing?.priceAmount ?? ""}
+              type="number"
+              min="0"
+              required
+              inputMode="numeric"
+              className={num16}
+            />
           </Field>
           <Field label="Price is per *">
-            <Pick value={sel.pricePeriod} onChange={pick("pricePeriod")} options={pairs(PRICE_PERIODS)} />
+            <Pick
+              value={sel.pricePeriod}
+              onChange={pick("pricePeriod")}
+              options={pairs(PRICE_PERIODS)}
+            />
           </Field>
-          <Field label="Requires how many years upfront?" hint="Leave blank if not reported yet">
-            <Input name="requiresUpfrontYears" defaultValue={initialListing?.requiresUpfrontYears ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
+          <Field
+            label="Requires how many years upfront?"
+            hint="Leave blank if not reported yet"
+          >
+            <Input
+              name="requiresUpfrontYears"
+              defaultValue={initialListing?.requiresUpfrontYears ?? ""}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              className={num16}
+            />
           </Field>
           <Field label="Accepted payment periods">
-            <CheckGroup options={ACCEPTED_PERIODS} selected={periods} onChange={setPeriods} />
+            <CheckGroup
+              options={ACCEPTED_PERIODS}
+              selected={periods}
+              onChange={setPeriods}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -566,8 +788,18 @@ export default function ListingForm({
               ]}
             />
           </Field>
-          <Field label="Inspection fee amount (NGN)" hint="Only used when you pick 'there is a fee'">
-            <Input name="inspectionFeeAmount" defaultValue={initialListing?.inspectionFeeAmount ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
+          <Field
+            label="Inspection fee amount (NGN)"
+            hint="Only used when you pick 'there is a fee'"
+          >
+            <Input
+              name="inspectionFeeAmount"
+              defaultValue={initialListing?.inspectionFeeAmount ?? ""}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              className={num16}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -578,23 +810,54 @@ export default function ListingForm({
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="flex min-h-11 items-center gap-2 text-sm font-medium md:min-h-0">
-            <Checkbox checked={verified} onCheckedChange={(on) => setVerified(on === true)} />
+            <Checkbox
+              checked={verified}
+              onCheckedChange={(on) => setVerified(on === true)}
+            />
             Verified by me
           </label>
           <Field label="Checks I confirmed">
-            <CheckGroup options={CHECKS} selected={checks} onChange={setChecks} />
+            <CheckGroup
+              options={CHECKS}
+              selected={checks}
+              onChange={setChecks}
+            />
           </Field>
           <Field label="Has a security post?">
-            <Pick value={sel.hasSecurityPost} onChange={pick("hasSecurityPost")} options={TRI} />
+            <Pick
+              value={sel.hasSecurityPost}
+              onChange={pick("hasSecurityPost")}
+              options={TRI}
+            />
           </Field>
           <Field label="Gated compound?">
-            <Pick value={sel.isGatedCompound} onChange={pick("isGatedCompound")} options={TRI} />
+            <Pick
+              value={sel.isGatedCompound}
+              onChange={pick("isGatedCompound")}
+              options={TRI}
+            />
           </Field>
           <Field label="Rating (0 to 5)">
-            <Input name="rating" defaultValue={initialListing?.rating ?? ""} type="number" step="0.1" min="0" max="5" inputMode="decimal" className={num16} />
+            <Input
+              name="rating"
+              defaultValue={initialListing?.rating ?? ""}
+              type="number"
+              step="0.1"
+              min="0"
+              max="5"
+              inputMode="decimal"
+              className={num16}
+            />
           </Field>
           <Field label="Number of reviews">
-            <Input name="reviewCount" defaultValue={initialListing?.reviewCount ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
+            <Input
+              name="reviewCount"
+              defaultValue={initialListing?.reviewCount ?? ""}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              className={num16}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -604,34 +867,85 @@ export default function ListingForm({
           <CardTitle>Extra</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label="Popularity score" hint="Feeds the Trending feed. Leave blank if unsure.">
-            <Input name="popularityScore" defaultValue={initialListing?.popularityScore ?? ""} type="number" min="0" inputMode="numeric" className={num16} />
+          <Field
+            label="Popularity score"
+            hint="Feeds the Trending feed. Leave blank if unsure."
+          >
+            <Input
+              name="popularityScore"
+              defaultValue={initialListing?.popularityScore ?? ""}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              className={num16}
+            />
           </Field>
-          <Field label="Construction progress (0 to 100)" hint="Only for 'construction'">
-            <Input name="constructionProgress" defaultValue={initialListing?.constructionProgress ?? ""} type="number" min="0" max="100" inputMode="numeric" className={num16} />
+          <Field
+            label="Construction progress (0 to 100)"
+            hint="Only for 'construction'"
+          >
+            <Input
+              name="constructionProgress"
+              defaultValue={initialListing?.constructionProgress ?? ""}
+              type="number"
+              min="0"
+              max="100"
+              inputMode="numeric"
+              className={num16}
+            />
           </Field>
           <Field label="Expires on" hint="Only for 'expiring'">
-            <Input name="expiresAt" defaultValue={initialListing?.expiresAt?.slice(0, 10) ?? ""} type="date" className={num16} />
+            <Input
+              name="expiresAt"
+              defaultValue={initialListing?.expiresAt?.slice(0, 10) ?? ""}
+              type="date"
+              className={num16}
+            />
           </Field>
           <Field label="Why this place? (one short, factual line)">
-            <Input name="insight" defaultValue={initialListing?.insight ?? ""} className={num16} />
+            <Input
+              name="insight"
+              defaultValue={initialListing?.insight ?? ""}
+              className={num16}
+            />
           </Field>
         </CardContent>
       </Card>
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button type="submit" disabled={saving} className="min-h-11 text-base md:text-sm">
-            {saving ? (editing ? "Updating..." : "Saving...") : editing ? "Update listing" : "Save listing"}
+          <Button
+            type="submit"
+            disabled={saving}
+            className="min-h-11 text-base md:text-sm"
+          >
+            {saving
+              ? editing
+                ? "Updating..."
+                : "Saving..."
+              : editing
+                ? "Update listing"
+                : "Save listing"}
           </Button>
           {editing && onCancel ? (
-            <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={onCancel}
+            >
               Cancel
             </Button>
           ) : null}
         </div>
         {message ? (
-          <p className={message.ok ? "text-sm text-green-600" : "text-sm text-destructive"}>{message.text}</p>
+          <p
+            className={
+              message.ok ? "text-sm text-green-600" : "text-sm text-destructive"
+            }
+          >
+            {message.text}
+          </p>
         ) : null}
       </div>
     </form>

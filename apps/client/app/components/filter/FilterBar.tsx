@@ -14,12 +14,18 @@ import styles from "./FilterBar.module.css";
  */
 export function FilterBar() {
   const { filters, sheetMode, openSheet } = useFilters();
-  const budgetLabel = BUDGET_OPTIONS.find((o) => o.value === filters.budget)?.label;
+  const budgetLabel = BUDGET_OPTIONS.find(
+    (o) => o.value === filters.budget,
+  )?.label;
   const campus = campusLabel(filters.campus ?? undefined);
 
   // Only actual listing areas are offered; distances are not a supported filter.
   const areaLabel = filters.area ?? "Area";
   const areaActive = filters.area !== null;
+  const amenityLabel =
+    filters.amenities.length > 0
+      ? `Amenities · ${filters.amenities.length}`
+      : "Amenities";
 
   // More chip: shows how many of its switches are on.
   const moreCount = countMoreFilters(filters);
@@ -27,11 +33,49 @@ export function FilterBar() {
 
   return (
     <div className={styles.bar} role="group" aria-label="Quick filters">
-      <Chip label={campus ?? "Campus"} mode="campus" active={Boolean(campus)} current={sheetMode} onOpen={openSheet} />
-      <Chip label={budgetLabel ?? "Budget"} mode="budget" active={Boolean(budgetLabel)} current={sheetMode} onOpen={openSheet} />
-      <Chip label={filters.room ?? "Room type"} mode="room" active={Boolean(filters.room)} current={sheetMode} onOpen={openSheet} />
-      <Chip label={areaLabel} mode="area" active={areaActive} current={sheetMode} onOpen={openSheet} />
-      <Chip label={moreLabel} mode="more" active={moreCount > 0} current={sheetMode} onOpen={openSheet} icon />
+      <Chip
+        label={campus ?? "Campus"}
+        mode="campus"
+        active={Boolean(campus)}
+        current={sheetMode}
+        onOpen={openSheet}
+      />
+      <Chip
+        label={budgetLabel ?? "Budget"}
+        mode="budget"
+        active={Boolean(budgetLabel)}
+        current={sheetMode}
+        onOpen={openSheet}
+      />
+      <Chip
+        label={filters.room ?? "Room type"}
+        mode="room"
+        active={Boolean(filters.room)}
+        current={sheetMode}
+        onOpen={openSheet}
+      />
+      <Chip
+        label={areaLabel}
+        mode="area"
+        active={areaActive}
+        current={sheetMode}
+        onOpen={openSheet}
+      />
+      <Chip
+        label={amenityLabel}
+        mode="amenities"
+        active={filters.amenities.length > 0}
+        current={sheetMode}
+        onOpen={openSheet}
+      />
+      <Chip
+        label={moreLabel}
+        mode="more"
+        active={moreCount > 0}
+        current={sheetMode}
+        onOpen={openSheet}
+        icon
+      />
     </div>
   );
 }
@@ -46,17 +90,31 @@ type ChipProps = {
   icon?: boolean;
 };
 
-function Chip({ label, mode, current, onOpen, active, fixed, icon }: ChipProps) {
+function Chip({
+  label,
+  mode,
+  current,
+  onOpen,
+  active,
+  fixed,
+  icon,
+}: ChipProps) {
   return (
     <button
       type="button"
-      className={[styles.chip, active && styles.active, fixed && styles.fixed].filter(Boolean).join(" ")}
+      className={[styles.chip, active && styles.active, fixed && styles.fixed]
+        .filter(Boolean)
+        .join(" ")}
       aria-haspopup="dialog"
       aria-expanded={current === mode}
       onClick={() => onOpen(mode)}
     >
       {label}
-      {icon ? <SlidersHorizontal size={15} aria-hidden /> : <ChevronDown size={15} aria-hidden />}
+      {icon ? (
+        <SlidersHorizontal size={15} aria-hidden />
+      ) : (
+        <ChevronDown size={15} aria-hidden />
+      )}
     </button>
   );
 }

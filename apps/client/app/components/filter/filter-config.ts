@@ -1,4 +1,9 @@
-import type { BudgetBand, FilterFields, FilterKey, Filters } from "./filter-types";
+import type {
+  BudgetBand,
+  FilterFields,
+  FilterKey,
+  Filters,
+} from "./filter-types";
 
 /**
  * FILTER OPTIONS. To add a room type, an area or a budget band, edit the lists below.
@@ -11,7 +16,11 @@ export const BUDGET_OPTIONS: ReadonlyArray<{
   matches: (priceAmount: number) => boolean;
 }> = [
   { value: "lt", label: "Under ₦150,000", matches: (p) => p < 150_000 },
-  { value: "mid", label: "₦150,000 to ₦220,000", matches: (p) => p >= 150_000 && p <= 220_000 },
+  {
+    value: "mid",
+    label: "₦150,000 to ₦220,000",
+    matches: (p) => p >= 150_000 && p <= 220_000,
+  },
   { value: "hi", label: "Above ₦220,000", matches: (p) => p > 220_000 },
 ];
 
@@ -38,6 +47,7 @@ export const EMPTY_FILTERS: Filters = {
   gated: false,
   hideRented: false,
   q: "",
+  amenities: [],
 };
 
 /** How many filters are switched on (useful for a badge). */
@@ -53,6 +63,7 @@ export function countActiveFilters(f: Filters): number {
     f.gated,
     f.hideRented,
     f.q,
+    f.amenities.length > 0,
   ].filter(Boolean).length;
 }
 
@@ -69,8 +80,14 @@ export function countMoreFilters(f: Filters): number {
  * Honest-gap rule: a filter only keeps places where the fact is CONFIRMED.
  * If a fact is unknown (undefined), the place is hidden while that filter is on.
  */
-export function applyFilters<T>(items: readonly T[], f: Filters, pick: (item: T) => FilterFields): T[] {
-  const band = f.budget ? BUDGET_OPTIONS.find((o) => o.value === f.budget) : undefined;
+export function applyFilters<T>(
+  items: readonly T[],
+  f: Filters,
+  pick: (item: T) => FilterFields,
+): T[] {
+  const band = f.budget
+    ? BUDGET_OPTIONS.find((o) => o.value === f.budget)
+    : undefined;
   const query = f.q.trim().toLowerCase();
 
   return items.filter((item) => {
@@ -78,18 +95,26 @@ export function applyFilters<T>(items: readonly T[], f: Filters, pick: (item: T)
     if (
       f.campus &&
       x.campus?.trim().toLowerCase() !== f.campus.trim().toLowerCase()
-    ) return false;
+    )
+      return false;
     if (f.room && x.room !== f.room) return false;
-    if (
-      f.area &&
-      x.area.trim().toLowerCase() !== f.area.trim().toLowerCase()
-    ) return false;
+    if (f.area && x.area.trim().toLowerCase() !== f.area.trim().toLowerCase())
+      return false;
     if (band && !band.matches(x.price)) return false;
     if (f.ownerOnly && !x.owner) return false;
     if (f.noFee && !x.noFee) return false;
     if (f.lowUpfront && !x.lowUpfront) return false;
     if (f.gated && !x.gated) return false;
     if (f.hideRented && !x.available) return false;
+    if (
+      f.amenities.length > 0 &&
+      !f.amenities.every((amenity) =>
+        x.amenities?.some(
+          (item) => item.toLowerCase() === amenity.toLowerCase(),
+        ),
+      )
+    )
+      return false;
     if (query && !x.text.toLowerCase().includes(query)) return false;
     return true;
   });

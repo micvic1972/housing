@@ -20,12 +20,15 @@ export type Filters = {
   hideRented: boolean;
   /** Free-text search over name, area, campus, and insight. */
   q: string;
+  /** All selected amenities must be present on a listing. */
+  amenities: string[];
 };
 
 export type FilterKey = keyof Filters;
 
 /** Which part of the sheet is open. "all" also shows the search box and every group. */
-export type SheetMode = "all" | "campus" | "budget" | "room" | "area" | "more";
+export type SheetMode =
+  "all" | "campus" | "budget" | "room" | "area" | "amenities" | "more";
 
 /**
  * The only fields the filters need from a listing.
@@ -42,6 +45,7 @@ export type FilterFields = {
   campus?: string;
   /** Text the search box looks inside, including campus when reported. */
   text: string;
+  amenities?: string[];
   /** true only when "no inspection fee" is confirmed. */
   noFee?: boolean;
   /** true only when you deal directly with the owner. */

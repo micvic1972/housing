@@ -19,38 +19,35 @@
 // clears it.
 // ============================================================================
 
-import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import BottomSheet from "../ui/bottomsheet/BottomSheet";
 import { useListings } from "../../lib/listings-provider";
 import { CAMPUSES } from "../../config/campuses";
-import {
-  BUDGET_OPTIONS,
-  applyFilters,
-  countMoreFilters,
-} from "./filter-config";
+import { BUDGET_OPTIONS, countMoreFilters } from "./filter-config";
 import type { SheetMode } from "./filter-types";
 import { useFilters } from "./FilterProvider";
-import { listingFilterFields, ROOM_LABELS } from "./listing-fields";
+import { ROOM_LABELS } from "./listing-fields";
 import styles from "./FilterSheet.module.css";
 
-type TabId = "campus" | "budget" | "room" | "area" | "more";
+type TabId = "campus" | "budget" | "room" | "area" | "amenities" | "more";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "campus", label: "Campus" },
   { id: "budget", label: "Budget" },
   { id: "room", label: "Room" },
   { id: "area", label: "Area" },
+  { id: "amenities", label: "Amenities" },
   { id: "more", label: "More" },
 ];
 
 // The switches in the More tab, grouped by the question they answer.
 // To add a switch: add its key to Filters (filter-types.ts), then add a row here.
-type MoreKey =
-  | "ownerOnly"
-  | "noFee"
-  | "lowUpfront"
-  | "gated"
-  | "hideRented";
+type MoreKey = "ownerOnly" | "noFee" | "lowUpfront" | "gated" | "hideRented";
 
 const MORE_GROUPS: {
   title: string;
@@ -105,7 +102,11 @@ const MORE_GROUPS: {
 
 // Which tab opens first depends on which chip the student tapped.
 function startTab(mode: SheetMode): TabId {
-  return mode === "campus" || mode === "room" || mode === "area" || mode === "more"
+  return mode === "campus" ||
+    mode === "room" ||
+    mode === "area" ||
+    mode === "amenities" ||
+    mode === "more"
     ? mode
     : "budget";
 }
@@ -116,29 +117,27 @@ function startTab(mode: SheetMode): TabId {
 
 export function FilterSheet() {
   const {
-    filters,
     sheetMode,
     closeSheet,
     clearFilters,
     activeCount,
     campusPreferenceError,
-  } =
-    useFilters();
+  } = useFilters();
 
   // Live count: the same filtering the feed uses, so they always agree.
-  const { listings, status, reload } = useListings();
-  const count = applyFilters(listings, filters, listingFilterFields).length;
+  const { discoveryCount, discoveryStatus, reload } = useListings();
+  const count = discoveryCount;
 
   const showLabel =
-    status === "loading"
+    discoveryStatus === "loading"
       ? "Loading places…"
-      : status === "error"
+      : discoveryStatus === "error"
         ? "Try loading again"
         : count === 0
-      ? "No places match"
-      : count === 1
-        ? "Show 1 place"
-        : `Show ${count} places`;
+          ? "No places match"
+          : count === 1
+            ? "Show 1 place"
+            : `Show ${count} places`;
 
   return (
     <BottomSheet
@@ -159,8 +158,8 @@ export function FilterSheet() {
           <button
             type="button"
             className={styles.show}
-            disabled={status === "loading"}
-            onClick={status === "error" ? reload : closeSheet}
+            disabled={discoveryStatus === "loading"}
+            onClick={discoveryStatus === "error" ? reload : closeSheet}
           >
             {showLabel}
           </button>
@@ -233,7 +232,10 @@ function SwitchRow({
         <b>{title}</b>
         <span>{hint}</span>
       </span>
-      <span className={`${styles.track} ${on ? styles.trackOn : ""}`} aria-hidden>
+      <span
+        className={`${styles.track} ${on ? styles.trackOn : ""}`}
+        aria-hidden
+      >
         <span className={styles.thumb} />
       </span>
     </button>
@@ -257,6 +259,7 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
     budget: filters.budget !== null,
     room: filters.room !== null,
     area: filters.area !== null,
+    amenities: filters.amenities.length > 0,
     more: countMoreFilters(filters) > 0,
   };
 
@@ -278,7 +281,6 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
     <div>
       {/* Only the search icon opens the sheet in "all" mode. A proper search
           experience comes in its own step; this keeps the icon useful. */}
-
 
       <div className={styles.tabs} role="tablist" aria-label="Filter groups">
         {TABS.map((t, i) => (
@@ -346,7 +348,10 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
                   label={o.label}
                   selected={filters.budget === o.value}
                   onClick={() =>
-                    setFilter("budget", filters.budget === o.value ? null : o.value)
+                    setFilter(
+                      "budget",
+                      filters.budget === o.value ? null : o.value,
+                    )
                   }
                 />
               ))}
@@ -360,15 +365,21 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
         {tab === "room" ? (
           <>
             <div className={styles.options}>
-              {[...new Set(listings.map((listing) => ROOM_LABELS[listing.roomType]))]
+              {[
+                ...new Set(
+                  listings.map((listing) => ROOM_LABELS[listing.roomType]),
+                ),
+              ]
                 .filter(Boolean)
                 .map((r) => (
-                <Option
-                  key={r}
-                  label={r}
-                  selected={filters.room === r}
-                  onClick={() => setFilter("room", filters.room === r ? null : r)}
-                />
+                  <Option
+                    key={r}
+                    label={r}
+                    selected={filters.room === r}
+                    onClick={() =>
+                      setFilter("room", filters.room === r ? null : r)
+                    }
+                  />
                 ))}
             </div>
             <p className={styles.hint}>Tap again to clear.</p>
@@ -383,15 +394,46 @@ function FilterPanel({ mode }: { mode: SheetMode }) {
                 .filter(Boolean)
                 .sort((a, b) => a.localeCompare(b))
                 .map((a) => (
-                <Option
-                  key={a}
-                  label={a}
-                  selected={filters.area === a}
-                  onClick={() => setFilter("area", filters.area === a ? null : a)}
-                />
+                  <Option
+                    key={a}
+                    label={a}
+                    selected={filters.area === a}
+                    onClick={() =>
+                      setFilter("area", filters.area === a ? null : a)
+                    }
+                  />
                 ))}
             </div>
             <p className={styles.hint}>Tap again to clear.</p>
+          </>
+        ) : null}
+
+        {tab === "amenities" ? (
+          <>
+            <h3 className={styles.groupTitle}>Amenities</h3>
+            <div className={styles.options}>
+              {[...new Set(listings.flatMap((listing) => listing.amenities))]
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b))
+                .map((amenity) => (
+                  <Option
+                    key={amenity}
+                    label={amenity}
+                    selected={filters.amenities.includes(amenity)}
+                    onClick={() =>
+                      setFilter(
+                        "amenities",
+                        filters.amenities.includes(amenity)
+                          ? filters.amenities.filter((item) => item !== amenity)
+                          : [...filters.amenities, amenity],
+                      )
+                    }
+                  />
+                ))}
+            </div>
+            <p className={styles.hint}>
+              Listings must include every selected amenity.
+            </p>
           </>
         ) : null}
 

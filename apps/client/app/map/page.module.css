@@ -135,6 +135,11 @@
   font-size: 13px;
 }
 
+.resultsHeading label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .locationCard {
   display: flex;
   width: 100%;

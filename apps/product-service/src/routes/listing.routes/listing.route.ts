@@ -9,7 +9,10 @@ import {
   listListings,
   updateListing,
 } from "../../controller/listing/listing.controller.js";
-import { uploadListingImages } from "../../controller/listing/listing-image.controller.js";
+import {
+  deleteListingImage,
+  uploadListingImages,
+} from "../../controller/listing/listing-image.controller.js";
 import {
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_IMAGES,
@@ -34,14 +37,14 @@ export async function listingRoutes(app: FastifyInstance) {
     "/listings/:id/images",
     {
       preHandler: requireClerkAdmin,
-      bodyLimit:
-        MAX_LISTING_IMAGE_BYTES * MAX_LISTING_IMAGES + 1024 * 1024,
+      bodyLimit: MAX_LISTING_IMAGE_BYTES * MAX_LISTING_IMAGES + 1024 * 1024,
     },
     uploadListingImages,
   );
-  app.delete(
-    "/listings/:id",
+  app.delete<{ Params: { id: string; imageId: string } }>(
+    "/listings/:id/images/:imageId",
     { preHandler: requireClerkAdmin },
-    deleteListing,
+    deleteListingImage,
   );
+  app.delete("/listings/:id", { preHandler: requireClerkAdmin }, deleteListing);
 }

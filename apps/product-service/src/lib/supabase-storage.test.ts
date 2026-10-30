@@ -71,7 +71,7 @@ test("fails clearly for a missing bucket without attempting bucket creation", as
         assert.deepEqual(requests, [
           {
             method: "GET",
-            pathname: "/storage/v1/bucket/uninest-listing-images",
+            pathname: "/storage/v1/bucket/listing-images",
           },
         ]);
       } finally {
@@ -156,8 +156,46 @@ test("reports unexpected Storage responses with sanitized details", async () => 
   );
 });
 
+test("normalizes the Supabase REST endpoint URL to the project root for Storage", async () => {
+  const originalFetch = globalThis.fetch;
+  const paths: string[] = [];
+
+  await withStorageEnv(
+    {
+      SUPABASE_URL: "https://normalize.supabase.co/rest/v1/",
+      SUPABASE_SERVICE_ROLE_KEY: secretKey,
+    },
+    async () => {
+      globalThis.fetch = async (input) => {
+        paths.push(new URL(String(input)).pathname);
+        return Response.json({ public: true }, { status: 200 });
+      };
+
+      try {
+        await uploadListingImage(
+          "listing-test",
+          "image/png",
+          new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        );
+        assert.equal(paths.length, 2);
+        assert.equal(paths[0], "/storage/v1/bucket/listing-images");
+        assert.match(
+          paths[1]!,
+          /^\/storage\/v1\/object\/listing-images\/listing-test\/.+\.png$/,
+        );
+        assert.equal(
+          paths.every((path) => !path.startsWith("/rest/v1/")),
+          true,
+        );
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    },
+  );
+});
+
 test("uses the default public bucket and sends sb_secret_ in Storage auth headers", async () => {
-  assert.equal(LISTING_IMAGE_BUCKET, "uninest-listing-images");
+  assert.equal(LISTING_IMAGE_BUCKET, "listing-images");
   const originalFetch = globalThis.fetch;
   const headersSeen: Headers[] = [];
   const requests: Array<{ method: string; pathname: string }> = [];
@@ -173,7 +211,7 @@ test("uses the default public bucket and sends sb_secret_ in Storage auth header
         const pathname = new URL(String(input)).pathname;
         requests.push({ method, pathname });
         headersSeen.push(new Headers(init?.headers));
-        if (pathname === "/storage/v1/bucket/uninest-listing-images") {
+        if (pathname === "/storage/v1/bucket/listing-images") {
           return Response.json({ public: true }, { status: 200 });
         }
         if (method === "POST") {
@@ -191,7 +229,7 @@ test("uses the default public bucket and sends sb_secret_ in Storage auth header
 
         assert.match(
           result.url,
-          /\/storage\/v1\/object\/public\/uninest-listing-images\//,
+          /\/storage\/v1\/object\/public\/listing-images\//,
         );
         assert.deepEqual(
           requests.map((request) => request.method),
@@ -202,6 +240,7 @@ test("uses the default public bucket and sends sb_secret_ in Storage auth header
           false,
         );
         assert.equal(headersSeen[0]?.get("apikey"), secretKey);
+        assert.equal(headersSeen[1]?.get("x-upsert"), "true");
         assert.equal(
           headersSeen[0]?.get("authorization"),
           `Bearer ${secretKey}`,

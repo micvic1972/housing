@@ -24,11 +24,12 @@ service-role key stay server-side.
    with no paths (for example, `https://client.example.com,https://admin.example.com`).
    Production startup fails if this allowlist is missing or malformed.
    Development keeps LAN testing enabled.
-6. Add `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY` to the
-   product-service environment. Do not use a `NEXT_PUBLIC_` variable for that
-   key. Current `sb_secret_` API keys and legacy service-role keys are
-   supported. `SUPABASE_STORAGE_BUCKET` is optional; if omitted, the service
-   uses `uninest-listing-images`.
+6. Add the Supabase project root URL as `SUPABASE_URL` and the server-only
+   `SUPABASE_SERVICE_ROLE_KEY` to the product-service environment. Do not use a
+   `NEXT_PUBLIC_` variable for that key. Current `sb_secret_` API keys and
+   legacy service-role keys are supported. A mistaken `/rest/v1` suffix is
+   normalized for Storage requests. `SUPABASE_STORAGE_BUCKET` is optional; if
+   omitted, the service uses `listing-images`.
 7. For the database package, configure `DATABASE_URL` and `DIRECT_URL` in
    `packages/product-db/.env` using the provider's pooled and direct
    PostgreSQL URLs. Never store these values in source control.
@@ -37,14 +38,17 @@ Clerk sign-in alone does not grant admin access. Keep the account allowlist
 limited to trusted administrators, and disable public sign-up in Clerk if
 account creation should be invitation-only.
 
-The service creates the public `uninest-listing-images` bucket on the first
-successful upload when it does not exist. Listing photos are public to read;
-only Clerk-authenticated allowlisted administrators can upload them. Accepted
-files are JPEG, PNG, or WebP, at most 5 MB each and 8 images per listing.
+The product service does not create Storage buckets. Before uploading, an owner
+must configure an existing public bucket in the same Supabase project as
+`SUPABASE_URL`; set `SUPABASE_STORAGE_BUCKET` to its exact name, or use the
+`listing-images` default. Listing photos are public to read; only
+Clerk-authenticated allowlisted administrators can upload them. Accepted files
+are JPEG, PNG, or WebP, at most 5 MB each and 8 images per listing. Editing a
+listing can append photos; existing photos are preserved.
 
 The saved-listings table supports editing listing fields through the
-administrator-protected `PATCH /listings/:id` API. Existing photos are
-preserved by an edit; photo replacement or removal is not part of this form.
+administrator-protected `PATCH /listings/:id` API. Photo replacement or
+removal is not part of this form.
 
 ## Run locally
 

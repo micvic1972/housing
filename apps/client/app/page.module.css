@@ -25,9 +25,32 @@
 }
 
 .resultCount {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   margin: 18px 0 12px;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.resultCount label,
+.resultsHeading label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resultCount select,
+.resultsHeading select {
+  min-height: 38px;
+  max-width: min(60vw, 260px);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
 }
 
 .saveError {

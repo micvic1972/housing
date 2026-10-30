@@ -25,9 +25,7 @@ import BottomSheet from "../ui/bottomsheet/BottomSheet";
 import { useListings } from "../../lib/listings-provider";
 import { placeholderScene } from "../home/listingcard/placeholder-scene";
 import type { Listing } from "../home/listingcard/types";
-import { applyFilters } from "./filter-config";
 import { useFilters } from "./FilterProvider";
-import { listingFilterFields } from "./listing-fields";
 import { getListingStatusLabel } from "../../lib/listing-status";
 import styles from "./SearchSheet.module.css";
 
@@ -48,9 +46,16 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
 
   const query = filters.q.trim();
 
-  // Same filtering the feed uses, so numbers and rows always agree.
-  const { listings, status, reload } = useListings();
-  const results = applyFilters(listings, filters, listingFilterFields);
+  const {
+    listings,
+    discoveryListings,
+    discoveryStatus,
+    discoveryCount,
+    discoveryHasMore,
+    loadMoreDiscovery,
+    reload,
+  } = useListings();
+  const results = discoveryListings;
 
   function openResult(id: string) {
     closeSheet();
@@ -58,7 +63,7 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
   }
 
   const showLabel =
-    results.length === 1 ? "Show 1 place" : `Show ${results.length} places`;
+    discoveryCount === 1 ? "Show 1 place" : `Show ${discoveryCount} places`;
 
   return (
     <BottomSheet
@@ -69,7 +74,7 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
       footer={
         // Only when there is something to show. "Show N places" keeps the
         // search on the feed; tapping a row instead opens that one place.
-        query && results.length > 0 ? (
+        query && discoveryCount > 0 ? (
           <button type="button" className={styles.show} onClick={closeSheet}>
             {showLabel}
           </button>
@@ -85,10 +90,13 @@ export function SearchSheet({ onOpenListing }: SearchSheetProps) {
         areas={[...new Set(listings.map((listing) => listing.location.area))]
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b))}
-        listingsStatus={status}
+        listingsStatus={discoveryStatus}
+        resultCount={discoveryCount}
+        hasMore={discoveryHasMore}
         onChange={(v) => setFilter("q", v)}
         onOpenResult={openResult}
         onRetry={reload}
+        onLoadMore={loadMoreDiscovery}
       />
     </BottomSheet>
   );
@@ -106,18 +114,24 @@ function SearchPanel({
   results,
   areas,
   listingsStatus,
+  resultCount,
+  hasMore,
   onChange,
   onOpenResult,
   onRetry,
+  onLoadMore,
 }: {
   query: string;
   raw: string;
   results: Listing[];
   areas: string[];
   listingsStatus: "loading" | "ready" | "error";
+  resultCount: number;
+  hasMore: boolean;
   onChange: (value: string) => void;
   onOpenResult: (id: string) => void;
   onRetry: () => void;
+  onLoadMore: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -177,11 +191,7 @@ function SearchPanel({
           <p className={styles.hint}>
             Search is unavailable because places could not be loaded.
           </p>
-          <button
-            type="button"
-            className={styles.emptyBtn}
-            onClick={onRetry}
-          >
+          <button type="button" className={styles.emptyBtn} onClick={onRetry}>
             Try loading again
           </button>
         </div>
@@ -210,11 +220,13 @@ function SearchPanel({
       ) : null}
 
       {/* STATE 2: typed, and something matches. */}
-      {listingsStatus === "ready" && query && results.length > 0 ? (
+      {(listingsStatus === "ready" || listingsStatus === "loading") &&
+      query &&
+      results.length > 0 ? (
         <>
           {/* aria-live so screen readers hear the count change as you type. */}
           <p className={styles.count} aria-live="polite">
-            {results.length === 1 ? "1 place" : `${results.length} places`}
+            {resultCount === 1 ? "1 place" : `${resultCount} places`}
           </p>
           <ul className={styles.list}>
             {results.map((l) => (
@@ -223,6 +235,16 @@ function SearchPanel({
               </li>
             ))}
           </ul>
+          {hasMore ? (
+            <button
+              type="button"
+              className={styles.show}
+              onClick={onLoadMore}
+              disabled={listingsStatus === "loading"}
+            >
+              {listingsStatus === "loading" ? "Loading…" : "Load more"}
+            </button>
+          ) : null}
         </>
       ) : null}
 

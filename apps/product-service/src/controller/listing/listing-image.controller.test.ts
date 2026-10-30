@@ -4,10 +4,14 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { prisma } from "@repo/product-db";
 import { listingRoutes } from "../../routes/listing.routes/listing.route.js";
 import {
+  LISTING_IMAGE_BUCKET,
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_IMAGES,
 } from "../../lib/supabase-storage.js";
-import { uploadListingImages } from "./listing-image.controller.js";
+import {
+  deleteListingImage,
+  uploadListingImages,
+} from "./listing-image.controller.js";
 
 const storageKey = "sb_secret_controller_test_key";
 const storageUrl = "https://controller-test.supabase.co";
@@ -84,6 +88,7 @@ async function runController(
   parts: Part[],
   options: {
     imageCount?: number;
+    existingImage?: boolean;
     findUniqueError?: Error;
     createManyError?: Error;
     fileErrorCode?: string;
@@ -98,7 +103,15 @@ async function runController(
   const previousBucket = process.env.SUPABASE_STORAGE_BUCKET;
   const previousFindUnique = prisma.listing.findUnique;
   const previousCreateMany = prisma.listingImage.createMany;
+  const previousFindMany = prisma.listingImage.findMany;
   const storageRequests: Array<{ method: string; pathname: string }> = [];
+  const imageRows: Array<{
+    id: string;
+    listingId: string;
+    url: string;
+    alt: string;
+    position: number;
+  }> = [];
 
   process.env.SUPABASE_URL = storageUrl;
   process.env.SUPABASE_SERVICE_ROLE_KEY = storageKey;
@@ -113,10 +126,51 @@ async function runController(
     };
   });
 
-  Reflect.set(prisma.listingImage, "createMany", async () => {
-    if (options.createManyError) throw options.createManyError;
-    return { count: parts.length };
-  });
+  Reflect.set(
+    prisma.listingImage,
+    "createMany",
+    async (args: {
+      data: Array<{
+        listingId: string;
+        url: string;
+        alt: string;
+        position: number;
+      }>;
+    }) => {
+      if (options.createManyError) throw options.createManyError;
+      imageRows.push(
+        ...args.data.map((image, index) => ({
+          ...image,
+          id: `image-${imageRows.length + index}`,
+        })),
+      );
+      return { count: args.data.length };
+    },
+  );
+  Reflect.set(
+    prisma.listingImage,
+    "findMany",
+    async (args: { where?: { url?: { in: string[] } }; take?: number }) => {
+      if (args.take === 1) {
+        return options.imageCount ? [{ position: options.imageCount - 1 }] : [];
+      }
+      if (args.where?.url) {
+        if (options.existingImage && imageRows.length === 0) {
+          imageRows.push({
+            id: "image-existing",
+            listingId: "listing-test",
+            url: args.where.url.in[0]!,
+            alt: "Existing test image",
+            position: 0,
+          });
+        }
+        return imageRows.filter((image) =>
+          args.where!.url!.in.includes(image.url),
+        );
+      }
+      return imageRows;
+    },
+  );
 
   globalThis.fetch = async (input, init) => {
     const method = init?.method ?? "GET";
@@ -139,6 +193,7 @@ async function runController(
     globalThis.fetch = previousFetch;
     Reflect.set(prisma.listing, "findUnique", previousFindUnique);
     Reflect.set(prisma.listingImage, "createMany", previousCreateMany);
+    Reflect.set(prisma.listingImage, "findMany", previousFindMany);
     if (previousUrl === undefined) delete process.env.SUPABASE_URL;
     else process.env.SUPABASE_URL = previousUrl;
     if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -149,7 +204,7 @@ async function runController(
   }
 }
 
-test("rejects unauthenticated image upload requests at the route", async () => {
+test("rejects unauthenticated listing writes and image uploads at the routes", async () => {
   const envKeys = [
     "CLERK_SECRET_KEY",
     "CLERK_JWT_KEY",
@@ -167,11 +222,29 @@ test("rejects unauthenticated image upload requests at the route", async () => {
   const app = Fastify();
   try {
     await app.register(listingRoutes);
-    const response = await app.inject({
-      method: "POST",
-      url: "/listings/listing-test/images",
-    });
-    assert.equal(response.statusCode, 401);
+    const requests = [
+      { method: "POST" as const, url: "/listings", payload: {} },
+      {
+        method: "PATCH" as const,
+        url: "/listings/listing-test",
+        payload: {},
+      },
+      { method: "DELETE" as const, url: "/listings/listing-test" },
+      { method: "POST" as const, url: "/listings/listing-test/images" },
+      {
+        method: "DELETE" as const,
+        url: "/listings/listing-test/images/image-test",
+      },
+    ];
+
+    for (const request of requests) {
+      const response = await app.inject(request);
+      assert.equal(
+        response.statusCode,
+        401,
+        `${request.method} ${request.url}`,
+      );
+    }
   } finally {
     await app.close();
     for (const key of envKeys) {
@@ -215,6 +288,109 @@ test("enforces image-count and multipart file-size limits", async () => {
   assert.equal(tooManyFiles.storageRequests.length, 0);
 });
 
+test("retries reuse the saved image reference without uploading a duplicate", async () => {
+  const retried = await runController([createPart("image/png")], {
+    imageCount: 1,
+    existingImage: true,
+  });
+  assert.equal(retried.reply.statusCode, 200);
+  assert.equal(retried.storageRequests.length, 0);
+  assert.equal((retried.reply.body as { data: unknown[] }).data.length, 1);
+});
+
+async function runDeleteImage(options: {
+  image?: { id: string; url: string } | null;
+  deleteError?: Error;
+  storageStatus?: number;
+}) {
+  const logs: unknown[][] = [];
+  const reply = createReply();
+  const previousFetch = globalThis.fetch;
+  const previousUrl = process.env.SUPABASE_URL;
+  const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const previousBucket = process.env.SUPABASE_STORAGE_BUCKET;
+  const previousFindFirst = prisma.listingImage.findFirst;
+  const previousDelete = prisma.listingImage.delete;
+  const storageRequests: string[] = [];
+  let deleteCalls = 0;
+  process.env.SUPABASE_URL = storageUrl;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = storageKey;
+  delete process.env.SUPABASE_STORAGE_BUCKET;
+  Reflect.set(prisma.listingImage, "findFirst", async () =>
+    options.image === undefined
+      ? {
+          id: "image-test",
+          url: `${storageUrl}/storage/v1/object/public/${LISTING_IMAGE_BUCKET}/listing-test/photo.png`,
+        }
+      : options.image,
+  );
+  Reflect.set(prisma.listingImage, "delete", async () => {
+    deleteCalls += 1;
+    if (options.deleteError) throw options.deleteError;
+  });
+  globalThis.fetch = async (input) => {
+    storageRequests.push(new URL(String(input)).pathname);
+    return Response.json({}, { status: options.storageStatus ?? 200 });
+  };
+  try {
+    await deleteListingImage(
+      {
+        params: { id: "listing-test", imageId: "image-test" },
+        log: {
+          error: (...values: unknown[]) => logs.push(values),
+          warn: (...values: unknown[]) => logs.push(values),
+        },
+      } as unknown as FastifyRequest<{
+        Params: { id: string; imageId: string };
+      }>,
+      reply as unknown as FastifyReply,
+    );
+    return { reply, storageRequests, deleteCalls, logs };
+  } finally {
+    globalThis.fetch = previousFetch;
+    Reflect.set(prisma.listingImage, "findFirst", previousFindFirst);
+    Reflect.set(prisma.listingImage, "delete", previousDelete);
+    if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey;
+    if (previousBucket === undefined)
+      delete process.env.SUPABASE_STORAGE_BUCKET;
+    else process.env.SUPABASE_STORAGE_BUCKET = previousBucket;
+  }
+}
+
+test("removes only a listing-owned image from Storage and its database reference", async () => {
+  const removed = await runDeleteImage({});
+  assert.equal(removed.reply.statusCode, 200);
+  assert.equal(removed.deleteCalls, 1);
+  assert.deepEqual(removed.storageRequests, [
+    `/storage/v1/object/${LISTING_IMAGE_BUCKET}`,
+  ]);
+});
+
+test("does not delete an image outside the requested listing", async () => {
+  const missing = await runDeleteImage({ image: null });
+  assert.equal(missing.reply.statusCode, 404);
+  assert.equal(missing.deleteCalls, 0);
+  assert.equal(missing.storageRequests.length, 0);
+});
+
+test("keeps the database image reference when Storage removal fails", async () => {
+  const failed = await runDeleteImage({ storageStatus: 500 });
+  assert.equal(failed.reply.statusCode, 503);
+  assert.equal(failed.deleteCalls, 0);
+});
+
+test("reports a database failure after Storage removal so the admin can retry", async () => {
+  const failed = await runDeleteImage({
+    deleteError: new Error("Synthetic database delete failure"),
+  });
+  assert.equal(failed.reply.statusCode, 500);
+  assert.equal(failed.deleteCalls, 1);
+  assert.match((failed.reply.body as { error: string }).error, /Retry removal/);
+});
+
 test("creates ordered image records without modifying existing images", async () => {
   const inserted: Array<{
     listingId: string;
@@ -223,12 +399,39 @@ test("creates ordered image records without modifying existing images", async ()
     position: number;
   }> = [];
   const previousCreateMany = prisma.listingImage.createMany;
+  const previousFindMany = prisma.listingImage.findMany;
+  const imageRows: Array<{
+    id: string;
+    listingId: string;
+    url: string;
+    alt: string;
+    position: number;
+  }> = [];
   Reflect.set(
     prisma.listingImage,
     "createMany",
     async (args: { data: typeof inserted }) => {
       inserted.push(...args.data);
+      imageRows.push(
+        ...args.data.map((image, index) => ({
+          ...image,
+          id: `image-${index}`,
+        })),
+      );
       return { count: args.data.length };
+    },
+  );
+  Reflect.set(
+    prisma.listingImage,
+    "findMany",
+    async (args: { where?: { url?: { in: string[] } }; take?: number }) => {
+      if (args.take === 1) return [{ position: 1 }];
+      if (args.where?.url) {
+        return imageRows.filter((image) =>
+          args.where!.url!.in.includes(image.url),
+        );
+      }
+      return imageRows;
     },
   );
 
@@ -282,10 +485,20 @@ test("creates ordered image records without modifying existing images", async ()
       requests.some(({ method }) => method === "DELETE"),
       false,
     );
+    const savedImages = (
+      reply.body as {
+        data: Array<{ id: string; url: string; position: number }>;
+      }
+    ).data;
+    assert.equal(savedImages.length, 2);
+    assert.equal(savedImages[0]?.id, "image-0");
+    assert.equal(savedImages[0]?.position, 2);
+    assert.match(savedImages[0]?.url ?? "", /\/listing-images\/listing-test\//);
   } finally {
     globalThis.fetch = previousFetch;
     Reflect.set(prisma.listing, "findUnique", previousFindUnique);
     Reflect.set(prisma.listingImage, "createMany", previousCreateMany);
+    Reflect.set(prisma.listingImage, "findMany", previousFindMany);
     if (previousUrl === undefined) delete process.env.SUPABASE_URL;
     else process.env.SUPABASE_URL = previousUrl;
     if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;

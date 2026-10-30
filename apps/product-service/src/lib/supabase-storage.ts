@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 export const MAX_LISTING_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_LISTING_IMAGES = 8;
 export const LISTING_IMAGE_BUCKET =
-  process.env.SUPABASE_STORAGE_BUCKET ?? "uninest-listing-images";
+  process.env.SUPABASE_STORAGE_BUCKET ?? "listing-images";
 
 const ALLOWED_CONTENT_TYPES = [
   "image/jpeg",
@@ -44,7 +44,12 @@ export class StorageRequestError extends Error {
   }
 }
 
-let publicBucketReady: Promise<void> | null = null;
+let publicBucketReady: {
+  baseUrl: string;
+  serviceKey: string;
+  bucket: string;
+  promise: Promise<void>;
+} | null = null;
 
 function getStorageConfig(): StorageConfig {
   const configuredUrl = process.env.SUPABASE_URL;
@@ -64,7 +69,7 @@ function getStorageConfig(): StorageConfig {
   if (!LISTING_IMAGE_BUCKET.trim()) {
     throw new StorageConfigurationError(
       "SUPABASE_STORAGE_BUCKET",
-      "SUPABASE_STORAGE_BUCKET is empty. Set a bucket name or remove it to use uninest-listing-images.",
+      "SUPABASE_STORAGE_BUCKET is empty. Set a bucket name or remove it to use listing-images.",
     );
   }
 
@@ -84,6 +89,22 @@ function getStorageConfig(): StorageConfig {
     throw new StorageConfigurationError(
       "SUPABASE_URL",
       "SUPABASE_URL must use HTTPS (HTTP is allowed only for localhost).",
+    );
+  }
+
+  const configuredPath = baseUrl.pathname.replace(/\/+$/, "");
+  if (configuredPath === "/rest/v1") {
+    baseUrl.pathname = "/";
+  } else if (configuredPath !== "") {
+    throw new StorageConfigurationError(
+      "SUPABASE_URL",
+      "SUPABASE_URL must be the Supabase project URL, not an API endpoint.",
+    );
+  }
+  if (baseUrl.search || baseUrl.hash) {
+    throw new StorageConfigurationError(
+      "SUPABASE_URL",
+      "SUPABASE_URL must not include a query string or fragment.",
     );
   }
 
@@ -209,13 +230,27 @@ async function requestPublicBucket(config: StorageConfig): Promise<void> {
 }
 
 async function ensurePublicBucket(config: StorageConfig): Promise<void> {
-  if (!publicBucketReady) {
-    publicBucketReady = requestPublicBucket(config).catch((error: unknown) => {
-      publicBucketReady = null;
+  if (
+    !publicBucketReady ||
+    publicBucketReady.baseUrl !== config.baseUrl ||
+    publicBucketReady.serviceKey !== config.serviceKey ||
+    publicBucketReady.bucket !== LISTING_IMAGE_BUCKET
+  ) {
+    const entry = {
+      baseUrl: config.baseUrl,
+      serviceKey: config.serviceKey,
+      bucket: LISTING_IMAGE_BUCKET,
+      promise: Promise.resolve(),
+    };
+    entry.promise = requestPublicBucket(config).catch((error: unknown) => {
+      if (publicBucketReady === entry) {
+        publicBucketReady = null;
+      }
       throw error;
     });
+    publicBucketReady = entry;
   }
-  return publicBucketReady;
+  return publicBucketReady.promise;
 }
 
 export function allowedImageType(value: string): value is AllowedContentType {
@@ -258,13 +293,11 @@ export async function uploadListingImage(
   const config = getStorageConfig();
   await ensurePublicBucket(config);
 
-  const extension =
-    contentType === "image/jpeg"
-      ? "jpg"
-      : contentType === "image/png"
-        ? "png"
-        : "webp";
-  const key = `${listingId}/${randomUUID()}.${extension}`;
+  const { key, url } = listingImageStorageReference(
+    listingId,
+    contentType,
+    bytes,
+  );
   const objectPath = encodeObjectPath(key);
   const body = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(body).set(bytes);
@@ -278,7 +311,7 @@ export async function uploadListingImage(
       headers: storageHeaders(config, {
         "content-type": contentType,
         "cache-control": "31536000",
-        "x-upsert": "false",
+        "x-upsert": "true",
       }),
       body,
       cache: "no-store",
@@ -288,11 +321,28 @@ export async function uploadListingImage(
     throw await storageRequestError(uploaded, "upload", config);
   }
 
+  return { key, url };
+}
+
+export function listingImageStorageReference(
+  listingId: string,
+  contentType: AllowedContentType,
+  bytes: Uint8Array,
+): { key: string; url: string } {
+  const config = getStorageConfig();
+  const extension =
+    contentType === "image/jpeg"
+      ? "jpg"
+      : contentType === "image/png"
+        ? "png"
+        : "webp";
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  const key = `${listingId}/${digest}.${extension}`;
   return {
     key,
     url: storageUrl(
       config,
-      `object/public/${encodeURIComponent(LISTING_IMAGE_BUCKET)}/${objectPath}`,
+      `object/public/${encodeURIComponent(LISTING_IMAGE_BUCKET)}/${encodeObjectPath(key)}`,
     ),
   };
 }
@@ -336,9 +386,13 @@ export function listingImageObjectKey(url: string): string | undefined {
   )}/`;
   if (!imageUrl.pathname.startsWith(prefix)) return undefined;
 
-  return imageUrl.pathname
-    .slice(prefix.length)
-    .split("/")
-    .map(decodeURIComponent)
-    .join("/");
+  try {
+    return imageUrl.pathname
+      .slice(prefix.length)
+      .split("/")
+      .map(decodeURIComponent)
+      .join("/");
+  } catch {
+    return undefined;
+  }
 }

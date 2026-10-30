@@ -51,7 +51,7 @@ Render dashboard, never in source control.
 | `CORS_ALLOWED_ORIGINS` | **Non-secret configuration** | Exact client and admin browser origins, comma-separated without paths, e.g. `https://uninest.example,https://admin.example.com`. |
 | `SUPABASE_URL` | **Non-secret configuration** | Supabase project URL used for Storage. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Server-only Supabase service-role or `sb_secret_` key. Never use a `NEXT_PUBLIC_` variable. |
-| `SUPABASE_STORAGE_BUCKET` | **Non-secret configuration** | Optional; defaults to `uninest-listing-images`. Bucket must be public for image reads. |
+| `SUPABASE_STORAGE_BUCKET` | **Non-secret configuration** | Optional; defaults to `listing-images`. Bucket must be public for image reads. |
 | `PORT` | **Platform-provided** | Render supplies this. The service listens on `process.env.PORT`, defaulting to 4000 locally. |
 | `NODE_ENV` | **Platform-provided** | Render sets production mode; do not change it to development. |
 

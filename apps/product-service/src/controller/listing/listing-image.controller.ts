@@ -6,6 +6,8 @@ import {
   isValidImageBytes,
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_IMAGES,
+  listingImageObjectKey,
+  listingImageStorageReference,
   StorageConfigurationError,
   StorageRequestError,
   uploadListingImage,
@@ -49,7 +51,7 @@ function storageFailureMessage(error: unknown): string {
       upstream.includes("bucket") ||
       upstream.includes("object not found")
     ) {
-      return `The configured storage bucket was not found. Check SUPABASE_STORAGE_BUCKET (current default: uninest-listing-images) or create that public bucket in Supabase.`;
+      return `The configured storage bucket was not found. Check SUPABASE_STORAGE_BUCKET (current default: listing-images) or create that public bucket in Supabase.`;
     }
     if (error.statusCode === 404) {
       return "Supabase did not recognize the configured project endpoint. Verify SUPABASE_URL.";
@@ -126,7 +128,51 @@ export async function uploadListingImages(
       error: "Choose JPEG, PNG, or WebP image files",
     });
   }
-  if (listing.imageCount + files.length > MAX_LISTING_IMAGES) {
+  let references: Array<BufferedImage & { key: string; url: string }>;
+  try {
+    references = files
+      .map((file) => ({
+        ...file,
+        ...listingImageStorageReference(id, file.contentType, file.bytes),
+      }))
+      .filter(
+        (image, index, list) =>
+          list.findIndex((candidate) => candidate.url === image.url) === index,
+      );
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(503).send({
+      error: `Image storage is unavailable. ${storageFailureMessage(error)}`,
+    });
+  }
+
+  let existingImages: Array<{ url: string }> = [];
+  let lastImage: Array<{ position: number }> = [];
+  try {
+    existingImages = await prisma.listingImage.findMany({
+      where: {
+        listingId: id,
+        url: { in: references.map((image) => image.url) },
+      },
+      select: { url: true },
+    });
+    lastImage = await prisma.listingImage.findMany({
+      where: { listingId: id },
+      orderBy: { position: "desc" },
+      take: 1,
+      select: { position: true },
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({
+      error: "Could not check existing listing photos",
+    });
+  }
+  const existingUrls = new Set(existingImages.map((image) => image.url));
+  const missingReferences = references.filter(
+    (image) => !existingUrls.has(image.url),
+  );
+  if (listing.imageCount + missingReferences.length > MAX_LISTING_IMAGES) {
     return reply.code(413).send({
       error: `A listing can have at most ${MAX_LISTING_IMAGES} photos`,
     });
@@ -134,8 +180,8 @@ export async function uploadListingImages(
 
   const stored: Array<{ key: string; url: string }> = [];
   try {
-    for (const file of files) {
-      stored.push(await uploadListingImage(id, file.contentType, file.bytes));
+    for (const image of missingReferences) {
+      stored.push(await uploadListingImage(id, image.contentType, image.bytes));
     }
   } catch (error) {
     if (error instanceof StorageRequestError) {
@@ -168,29 +214,99 @@ export async function uploadListingImages(
     });
   }
 
-  try {
-    await prisma.listingImage.createMany({
-      data: stored.map((image, index) => {
-        const position = listing.imageCount + index;
-        return {
+  if (stored.length > 0) {
+    try {
+      const startPosition = (lastImage[0]?.position ?? -1) + 1;
+      await prisma.listingImage.createMany({
+        data: stored.map((image, index) => ({
           listingId: id,
           url: image.url,
-          alt: `${listing.name} - photo ${position + 1}`,
-          position,
-        };
-      }),
+          alt: `${listing.name} - photo ${startPosition + index + 1}`,
+          position: startPosition + index,
+        })),
+      });
+    } catch (error) {
+      request.log.error(error);
+      try {
+        await deleteListingImageObjects(stored.map((image) => image.key));
+      } catch (cleanupError) {
+        request.log.error(cleanupError);
+      }
+      return reply.code(500).send({
+        error: "Photos could not be linked to the listing",
+      });
+    }
+  }
+
+  try {
+    const images = await prisma.listingImage.findMany({
+      where: {
+        listingId: id,
+        url: { in: references.map((image) => image.url) },
+      },
+      orderBy: { position: "asc" },
+      select: { id: true, url: true, alt: true, position: true },
+    });
+    return reply.code(stored.length > 0 ? 201 : 200).send({
+      data: images,
     });
   } catch (error) {
     request.log.error(error);
-    try {
-      await deleteListingImageObjects(stored.map((image) => image.key));
-    } catch (cleanupError) {
-      request.log.error(cleanupError);
-    }
     return reply.code(500).send({
-      error: "Photos could not be linked to the listing",
+      error: "Photos were saved but their references could not be returned",
+    });
+  }
+}
+
+export async function deleteListingImage(
+  request: FastifyRequest<{
+    Params: { id: string; imageId: string };
+  }>,
+  reply: FastifyReply,
+) {
+  const { id, imageId } = request.params;
+  let image: { id: string; url: string } | null;
+  try {
+    image = await prisma.listingImage.findFirst({
+      where: { id: imageId, listingId: id },
+      select: { id: true, url: true },
+    });
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({
+      error: "Could not load the listing photo",
+    });
+  }
+  if (!image) {
+    return reply.code(404).send({ error: "Listing photo not found" });
+  }
+
+  const key = listingImageObjectKey(image.url);
+  if (!key || !key.startsWith(`${id}/`) || key.split("/").includes("..")) {
+    return reply.code(409).send({
+      error: "This photo is not stored in the listing image bucket",
     });
   }
 
-  return reply.code(201).send({ data: { count: stored.length } });
+  try {
+    await deleteListingImageObjects([key]);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(503).send({
+      error:
+        "The photo could not be removed from storage; its listing record was kept",
+    });
+  }
+
+  try {
+    await prisma.listingImage.delete({ where: { id: image.id } });
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({
+      error:
+        "The stored photo was removed, but its listing record could not be deleted. Retry removal.",
+    });
+  }
+
+  return reply.code(200).send({ data: { id: image.id, removed: true } });
 }

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import "@/styles/tokens.css";
@@ -10,6 +11,31 @@ import { SavedListingsProvider } from "./lib/saved-listings";
 import { StudentActivityProvider } from "./lib/student-activity";
 import { AppearanceProvider } from "./lib/appearance-provider";
 import { isClientClerkConfigured } from "./lib/clerk-config";
+
+const appearanceBootstrap = `(() => {
+  try {
+    const stored = localStorage.getItem("delta-housing.appearance.v1");
+    if (!stored) return;
+
+    const preferences = JSON.parse(stored);
+    const mode = preferences?.mode;
+    const accent = preferences?.accent;
+    const validMode = mode === "system" || mode === "light" || mode === "dark";
+    const validAccent =
+      accent === "blue" ||
+      accent === "terracotta" ||
+      accent === "forest" ||
+      accent === "lavender-sage";
+
+    if (validMode && validAccent) {
+      document.documentElement.dataset.theme = mode;
+      document.documentElement.dataset.accent =
+        accent === "forest" ? "blue" : accent === "lavender-sage" ? "terracotta" : accent;
+    }
+  } catch {
+    // The provider reports storage errors after hydration.
+  }
+})();`;
 
 export const metadata: Metadata = {
   title: { default: "Delta Housing", template: "%s | Delta Housing" },
@@ -38,8 +64,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      data-theme="light"
+      data-accent="blue"
+      suppressHydrationWarning
+    >
       <body>
+        <Script
+          id="appearance-bootstrap"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: appearanceBootstrap }}
+        />
         <AppearanceProvider>
           {isClientClerkConfigured() ? (
             <ClerkProvider

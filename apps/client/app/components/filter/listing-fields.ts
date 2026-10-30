@@ -35,14 +35,13 @@ export function listingFilterFields(item: Listing): FilterFields {
     room: ROOM_LABELS[item.roomType],
     area: item.location.area,
     campus: item.location.campus,
+    amenities: item.amenities,
     text: `${item.name} ${item.location.area} ${item.location.campus ?? ""} ${item.location.landmark ?? ""} ${ROOM_LABELS[item.roomType]} ${item.amenities.join(" ")} ${item.insight ?? ""} ${item.status}`,
     owner: item.contact?.contactType
       ? item.contact.contactType === "owner"
       : undefined,
-    noFee:
-      inspectionFee === undefined ? undefined : inspectionFee === null,
-    lowUpfront:
-      upfrontYears === undefined ? undefined : upfrontYears <= 1,
+    noFee: inspectionFee === undefined ? undefined : inspectionFee === null,
+    lowUpfront: upfrontYears === undefined ? undefined : upfrontYears <= 1,
     gated: item.safety?.isGatedCompound,
     available:
       item.kind !== "rented" &&

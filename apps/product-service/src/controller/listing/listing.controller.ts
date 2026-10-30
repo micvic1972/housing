@@ -24,10 +24,7 @@ function findProblems(body: Record<string, unknown>): string[] {
     problems.push("priceAmount must be greater than 0");
   }
 
-  if (
-    typeof body.rating === "number" &&
-    (body.rating < 0 || body.rating > 5)
-  ) {
+  if (typeof body.rating === "number" && (body.rating < 0 || body.rating > 5)) {
     problems.push("rating must be between 0 and 5");
   }
 
@@ -208,24 +205,25 @@ export async function listListings(
   const roomType = first(query.roomType);
   const kind = first(query.kind);
   const status = first(query.status);
+  const contactType = first(query.contactType);
 
   const collection = first(query.collection);
   const sort = first(query.sort) ?? "relevance";
+  const paginated = query.page !== undefined || query.pageSize !== undefined;
+  const page = numberParam(query.page, "page", problems);
+  const pageSize = numberParam(query.pageSize, "pageSize", problems);
 
   const minPrice = numberParam(query.minPrice, "minPrice", problems);
   const maxPrice = numberParam(query.maxPrice, "maxPrice", problems);
-
-  const distanceKm = numberParam(
-    query.distanceKm,
-    "distanceKm",
+  const maxUpfrontYears = numberParam(
+    query.maxUpfrontYears,
+    "maxUpfrontYears",
     problems,
   );
 
-  const verified = booleanParam(
-    query.verified,
-    "verified",
-    problems,
-  );
+  const distanceKm = numberParam(query.distanceKm, "distanceKm", problems);
+
+  const verified = booleanParam(query.verified, "verified", problems);
 
   const hasSecurityPost = booleanParam(
     query.hasSecurityPost,
@@ -236,6 +234,11 @@ export async function listListings(
   const isGatedCompound = booleanParam(
     query.isGatedCompound,
     "isGatedCompound",
+    problems,
+  );
+  const availableOnly = booleanParam(
+    query.availableOnly,
+    "availableOnly",
     problems,
   );
 
@@ -251,19 +254,26 @@ export async function listListings(
     problems.push("maxPrice cannot be negative");
   }
 
-  if (
-    minPrice !== undefined &&
-    maxPrice !== undefined &&
-    minPrice > maxPrice
-  ) {
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
     problems.push("minPrice cannot be greater than maxPrice");
   }
 
-  if (
-    distanceKm !== undefined &&
-    distanceKm < 0
-  ) {
+  if (distanceKm !== undefined && distanceKm < 0) {
     problems.push("distanceKm cannot be negative");
+  }
+
+  if (maxUpfrontYears !== undefined && maxUpfrontYears < 0) {
+    problems.push("maxUpfrontYears cannot be negative");
+  }
+
+  if (page !== undefined && (!Number.isInteger(page) || page < 1)) {
+    problems.push("page must be a positive integer");
+  }
+  if (
+    pageSize !== undefined &&
+    (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50)
+  ) {
+    problems.push("pageSize must be an integer between 1 and 50");
   }
 
   const allowedCollections = [
@@ -272,12 +282,10 @@ export async function listListings(
     "new",
     "construction",
     "expiring",
+    "available",
   ];
 
-  if (
-    collection !== undefined &&
-    !allowedCollections.includes(collection)
-  ) {
+  if (collection !== undefined && !allowedCollections.includes(collection)) {
     problems.push(
       `collection must be one of: ${allowedCollections.join(", ")}`,
     );
@@ -292,9 +300,7 @@ export async function listListings(
   ];
 
   if (!allowedSorts.includes(sort)) {
-    problems.push(
-      `sort must be one of: ${allowedSorts.join(", ")}`,
-    );
+    problems.push(`sort must be one of: ${allowedSorts.join(", ")}`);
   }
 
   if (problems.length > 0) {
@@ -349,6 +355,17 @@ export async function listListings(
             mode: "insensitive",
           },
         },
+        {
+          roomType: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          amenities: {
+            has: search,
+          },
+        },
       ],
     });
   }
@@ -383,6 +400,24 @@ export async function listListings(
     where.status = status;
   }
 
+  if (contactType) {
+    where.contactType = contactType;
+  }
+
+  if (availableOnly) {
+    orClauses.push({
+      kind: { not: "rented" },
+      status: { notIn: ["rented", "unavailable"] },
+    });
+  }
+
+  if (collection === "available") {
+    orClauses.push({
+      kind: "available",
+      status: { notIn: ["rented", "unavailable"] },
+    });
+  }
+
   if (minPrice !== undefined || maxPrice !== undefined) {
     const priceFilter: Record<string, number> = {};
 
@@ -395,6 +430,12 @@ export async function listListings(
     }
 
     where.priceAmount = priceFilter;
+  }
+
+  if (maxUpfrontYears !== undefined) {
+    where.requiresUpfrontYears = {
+      lte: maxUpfrontYears,
+    };
   }
 
   if (distanceKm !== undefined) {
@@ -514,26 +555,48 @@ export async function listListings(
     ];
   }
 
+  const stableOrderBy = Array.isArray(orderBy)
+    ? [...orderBy, { id: "asc" }]
+    : [orderBy, { id: "asc" }];
+
   try {
-    const rows = await prisma.listing.findMany({
+    const listingQuery = {
       where: where as never,
-      orderBy: orderBy as never,
+      orderBy: stableOrderBy as never,
       include: {
         images: {
           orderBy: {
-            position: "asc",
+            position: "asc" as const,
           },
         },
       },
-    });
+    };
+    const rowsPromise = paginated
+      ? prisma.listing.findMany({
+          ...listingQuery,
+          skip: ((page ?? 1) - 1) * (pageSize ?? 12),
+          take: pageSize ?? 12,
+        })
+      : prisma.listing.findMany(listingQuery);
+    const [rows, count] = await Promise.all([
+      rowsPromise,
+      prisma.listing.count({ where: where as never }),
+    ]);
 
     return reply.send({
       data: rows,
       meta: {
-        count: rows.length,
+        count,
         collection: collection ?? "all",
         sort,
         search: search ?? null,
+        ...(paginated
+          ? {
+              page: page ?? 1,
+              pageSize: pageSize ?? 12,
+              hasMore: (page ?? 1) * (pageSize ?? 12) < count,
+            }
+          : {}),
       },
     });
   } catch (err) {

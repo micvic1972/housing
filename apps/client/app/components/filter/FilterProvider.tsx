@@ -43,7 +43,9 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
   const [campusPreferenceReady, setCampusPreferenceReady] = useState(false);
-  const [campusPreferenceError, setCampusPreferenceError] = useState<string | null>(null);
+  const [campusPreferenceError, setCampusPreferenceError] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -65,31 +67,31 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timeout);
   }, []);
 
-  const setFilter = useCallback(<K extends FilterKey>(key: K, value: Filters[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
-
-  const setCampusPreference = useCallback(
-    (campus: CampusId | null) => {
-      try {
-        if (campus) {
-          window.localStorage.setItem(CAMPUS_PREFERENCE_KEY, campus);
-        } else {
-          window.localStorage.removeItem(CAMPUS_PREFERENCE_KEY);
-        }
-      } catch {
-        setCampusPreferenceError(
-          "Could not save your campus preference on this device.",
-        );
-        return false;
-      }
-
-      setFilters((previous) => ({ ...previous, campus }));
-      setCampusPreferenceError(null);
-      return true;
+  const setFilter = useCallback(
+    <K extends FilterKey>(key: K, value: Filters[K]) => {
+      setFilters((prev) => ({ ...prev, [key]: value }));
     },
     [],
   );
+
+  const setCampusPreference = useCallback((campus: CampusId | null) => {
+    try {
+      if (campus) {
+        window.localStorage.setItem(CAMPUS_PREFERENCE_KEY, campus);
+      } else {
+        window.localStorage.removeItem(CAMPUS_PREFERENCE_KEY);
+      }
+    } catch {
+      setCampusPreferenceError(
+        "Could not save your campus preference on this device.",
+      );
+      return false;
+    }
+
+    setFilters((previous) => ({ ...previous, campus }));
+    setCampusPreferenceError(null);
+    return true;
+  }, []);
   const clearAllFilters = useCallback(() => {
     const cleared = setCampusPreference(null);
     setFilters(EMPTY_FILTERS);
@@ -124,7 +126,9 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <FiltersContext.Provider value={value}>{children}</FiltersContext.Provider>;
+  return (
+    <FiltersContext.Provider value={value}>{children}</FiltersContext.Provider>
+  );
 }
 
 export function useFilters(): FiltersContextValue {
