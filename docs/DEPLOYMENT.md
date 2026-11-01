@@ -2,14 +2,14 @@
 
 This deployment keeps the existing architecture: two Vercel Next.js projects
 and one Render Fastify API. PostgreSQL remains the existing Supabase database;
-photos remain in Supabase Storage. No schema changes or migrations are part of
-deployment setup.
+photos remain in Supabase Storage. Database changes are versioned as Prisma
+migrations and must be applied only after checking the target database.
 
 ## Before you deploy
 
-- Ensure the existing Supabase schema is present. The runtime database has no
-  `_prisma_migrations` history table, so do not run `migrate deploy`, `migrate
-  resolve`, `db push`, or a reset as part of setup.
+- Review `prisma migrate status` and the pending SQL for the exact deployment
+  target before applying migrations. Never use `db push`, reset a target, or
+  reconcile migration history for an unverified database.
 - Database TLS is not production-ready: the current pool config disables
   certificate verification, and a local strict-verification probe failed with
   a certificate-chain error. Do not deploy until the Supabase-provided CA is
@@ -47,7 +47,7 @@ Render dashboard, never in source control.
 | `CLERK_SECRET_KEY` | **Secret** | Required if using Clerk `verifyToken` with the secret key. |
 | `CLERK_JWT_KEY` | **Secret** | Optional alternative to `CLERK_SECRET_KEY` for JWT verification. Configure one of these. |
 | `CLERK_ADMIN_USER_IDS` | **Secret** | Comma-separated trusted Clerk user IDs. |
-| `CLERK_AUTHORIZED_PARTIES` | **Non-secret configuration** | Exact production admin origin(s), comma-separated, e.g. `https://admin.example.com`. |
+| `CLERK_AUTHORIZED_PARTIES` | **Non-secret configuration** | Exact client and admin app origins that request Clerk tokens, comma-separated, e.g. `https://uninest.example,https://admin.example.com`. |
 | `CORS_ALLOWED_ORIGINS` | **Non-secret configuration** | Exact client and admin browser origins, comma-separated without paths, e.g. `https://uninest.example,https://admin.example.com`. |
 | `SUPABASE_URL` | **Non-secret configuration** | Supabase project URL used for Storage. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Server-only Supabase service-role or `sb_secret_` key. Never use a `NEXT_PUBLIC_` variable. |
@@ -114,8 +114,8 @@ Add these Production environment variables:
 | `CLERK_ADMIN_USER_IDS` | **Secret** | Trusted administrator Clerk user IDs; must match the product service allowlist. |
 | `PRODUCT_SERVICE_API_URL` | **Secret** | Render product-service HTTPS origin. Server-to-server configuration, not a credential; keep server-only by not using a `NEXT_PUBLIC_` name. |
 
-Configure the Clerk admin instance to allow the deployed admin origin. The API
-also requires that origin in `CLERK_AUTHORIZED_PARTIES`, and both Vercel app
+Configure the Clerk instance to allow both deployed app origins. The API
+requires both origins in `CLERK_AUTHORIZED_PARTIES`, and both Vercel app
 origins in Render's `CORS_ALLOWED_ORIGINS`. CORS does not replace API-side
 Clerk authorization.
 
@@ -153,10 +153,11 @@ values are secrets and are not duplicated into the app templates.
   parties, admin IDs, and redirect URLs must be configured correctly.
 - The service needs a valid database URI during the Render build because the
   Prisma CLI config validates a connection URI when generating the client.
-- Do not run pending migrations: the database has no `_prisma_migrations`
-  table even though its current listing schema matches the checked-in listing
-  migrations. Reconcile/baseline that history separately and with explicit
-  authorization.
+- The configured Supabase database's listing schema was verified against the
+  checked-in baseline migrations, its migration history was reconciled, and
+  the inspection-request migration was applied. The reschedule-response
+  migration adds nullable inspection columns; verify migration status for each
+  deployment target before deploying.
 - Vercel preview origins are dynamic and are not automatically in the API CORS
   or Clerk authorized-party allowlists. Use production/stable custom domains or
   configure known preview origins deliberately; do not open production CORS

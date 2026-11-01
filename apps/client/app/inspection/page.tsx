@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 import { CalendarDays, Clock3, ExternalLink } from "lucide-react";
-import { useListings } from "../lib/listings-provider";
 import {
-  useStudentActivity,
-  type LocalInspection,
-} from "../lib/student-activity";
+  useInspectionRequests,
+  type InspectionRequest,
+} from "../lib/inspection-requests";
 import styles from "./page.module.css";
 
-function formatDate(value: string): string {
+function formatDate(value: string, includeTime = false): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "Date unavailable"
@@ -18,17 +16,20 @@ function formatDate(value: string): string {
         day: "numeric",
         month: "short",
         year: "numeric",
+        ...(includeTime ? { hour: "numeric", minute: "2-digit" } : {}),
       });
 }
 
 function InspectionCard({
   inspection,
-  listingName,
   onCancel,
+  onAcceptProposal,
+  onDeclineProposal,
 }: {
-  inspection: LocalInspection;
-  listingName: string;
+  inspection: ReturnType<typeof useInspectionRequests>["requests"][number];
   onCancel?: () => void;
+  onAcceptProposal?: () => void;
+  onDeclineProposal?: () => void;
 }) {
   const statusLabel =
     inspection.status[0].toUpperCase() + inspection.status.slice(1);
@@ -41,16 +42,34 @@ function InspectionCard({
         </span>
         <span className={styles.requestDate}>
           <Clock3 size={14} aria-hidden />
-          Requested {formatDate(inspection.requestedAt)}
+          Requested {formatDate(inspection.createdAt)}
         </span>
       </div>
-      <h3>{listingName}</h3>
+      <h3>{inspection.listing.name}</h3>
+      <p className={styles.requestDate}>
+        Requested visit: {formatDate(inspection.scheduledFor, true)}
+      </p>
+      {inspection.rescheduleProposedFor ? (
+        <p className={styles.requestDate}>
+          Proposed alternative:{" "}
+          {formatDate(inspection.rescheduleProposedFor, true)}
+        </p>
+      ) : null}
+      {inspection.adminResponse ? (
+        <p className={styles.cardNote}>
+          Administrator response: {inspection.adminResponse}
+        </p>
+      ) : null}
       <p className={styles.cardNote}>
         {inspection.status === "requested"
-          ? "Saved locally as a demo request. No property contact has received it, and no appointment is confirmed."
+          ? "Sent for review. The requested time is not confirmed yet."
           : inspection.status === "confirmed"
-            ? "This appointment is marked confirmed in the local activity record."
-            : "This local demo request is no longer active."}
+            ? "The requested visit has been confirmed."
+            : inspection.status === "declined"
+              ? "The requested visit was declined."
+              : inspection.status === "completed"
+                ? "The inspection has been marked complete."
+                : "This inspection request is no longer active."}
       </p>
       <div className={styles.cardActions}>
         {inspection.listingId ? (
@@ -68,7 +87,25 @@ function InspectionCard({
             type="button"
             onClick={onCancel}
           >
-            Cancel demo request
+            Cancel request
+          </button>
+        ) : null}
+        {onAcceptProposal ? (
+          <button
+            className={styles.cancelAction}
+            type="button"
+            onClick={onAcceptProposal}
+          >
+            Accept proposed time
+          </button>
+        ) : null}
+        {onDeclineProposal ? (
+          <button
+            className={styles.cancelAction}
+            type="button"
+            onClick={onDeclineProposal}
+          >
+            Keep original time
           </button>
         ) : null}
       </div>
@@ -77,22 +114,29 @@ function InspectionCard({
 }
 
 export default function InspectionPage() {
-  const { listings, status, reload } = useListings();
-  const { inspections, ready, error, cancelInspection } = useStudentActivity();
-  const listingNames = useMemo(
-    () => new Map(listings.map((listing) => [listing.id, listing.name])),
-    [listings],
-  );
+  const {
+    requests: inspections,
+    ready,
+    signedIn,
+    error,
+    reload,
+    cancelRequest,
+    acceptReschedule,
+    declineReschedule,
+  } = useInspectionRequests();
   const pending = inspections.filter((item) => item.status === "requested");
   const upcoming = inspections.filter((item) => item.status === "confirmed");
   const past = inspections.filter(
-    (item) => item.status === "completed" || item.status === "cancelled",
+    (item) =>
+      item.status === "completed" ||
+      item.status === "cancelled" ||
+      item.status === "declined",
   );
 
   function group(
     title: string,
     description: string,
-    entries: LocalInspection[],
+    entries: InspectionRequest[],
   ) {
     return (
       <section className={styles.group} aria-label={title}>
@@ -109,13 +153,19 @@ export default function InspectionPage() {
               <InspectionCard
                 key={inspection.id}
                 inspection={inspection}
-                listingName={
-                  listingNames.get(inspection.listingId) ??
-                  "Listing no longer available"
-                }
                 onCancel={
                   inspection.status === "requested"
-                    ? () => cancelInspection(inspection.id)
+                    ? () => void cancelRequest(inspection.id)
+                    : undefined
+                }
+                onAcceptProposal={
+                  inspection.rescheduleProposedFor
+                    ? () => void acceptReschedule(inspection.id)
+                    : undefined
+                }
+                onDeclineProposal={
+                  inspection.rescheduleProposedFor
+                    ? () => void declineReschedule(inspection.id)
                     : undefined
                 }
               />
@@ -134,14 +184,15 @@ export default function InspectionPage() {
         <p className={styles.eyebrow}>Your visits</p>
         <h1>Inspections</h1>
         <p>
-          Track your local demo requests. A request is not sent to the property
-          contact and does not mean an appointment is confirmed.
+          Track requests submitted for administrator review and confirmed
+          visits.
         </p>
       </header>
 
       <div className={styles.prototypeNotice} role="note">
         <CalendarDays size={18} aria-hidden />
-        Prototype only · activity is saved in this browser and is not synced.
+        Requests are saved to your account. Wait for confirmation before
+        visiting.
       </div>
 
       {error ? (
@@ -149,22 +200,26 @@ export default function InspectionPage() {
           {error}
         </p>
       ) : null}
-      {!ready || status === "loading" ? (
+      {!ready ? (
         <p className={styles.state} role="status">
-          Loading inspection activity…
+          Loading inspection requests…
         </p>
       ) : null}
-      {status === "error" ? (
+      {error ? (
         <section className={styles.state} role="alert">
-          <p>
-            Listings could not be loaded; property names may be unavailable.
-          </p>
+          <p>Inspection requests could not be loaded.</p>
           <button type="button" onClick={reload}>
             Retry
           </button>
         </section>
       ) : null}
-      {ready ? (
+      {ready && !signedIn ? (
+        <section className={styles.empty} role="status">
+          <p>Sign in to see requests connected to your account.</p>
+          <Link href="/sign-in?redirect_url=%2Finspection">Sign in</Link>
+        </section>
+      ) : null}
+      {ready && signedIn && !error ? (
         <div className={styles.groups}>
           {group(
             "Pending requests",
@@ -178,7 +233,7 @@ export default function InspectionPage() {
           )}
           {group(
             "Past activity",
-            "Completed or cancelled local requests.",
+            "Declined, completed, or cancelled requests.",
             past,
           )}
         </div>

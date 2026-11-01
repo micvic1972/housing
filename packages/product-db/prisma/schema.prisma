@@ -29,7 +29,7 @@ model Listing {
   status   String
   roomType String
 
-   area       String
+  area       String
   // Which UNIDEL campus this place is near: "alihame" | "owa-oyibu" | "owa-alero".
   // null = not reported yet (honest-gap rule), so old listings stay valid.
   campus     String?
@@ -49,7 +49,7 @@ model Listing {
   reviewCount Int?
 
   // "owner" | "agent" | "university-partner"; null = not reported yet.
-  contactType String?
+  contactType         String?
   // "unknown" | "none" | "confirmed"; the honest-gap rule in one column.
   inspectionFeeStatus String  @default("unknown")
   inspectionFeeAmount Int?
@@ -65,7 +65,8 @@ model Listing {
   expiresAt            DateTime?
   insight              String?
 
-  images ListingImage[]
+  images             ListingImage[]
+  inspectionRequests InspectionRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,4 +86,23 @@ model ListingImage {
   position  Int
 
   @@index([listingId])
+}
+
+model InspectionRequest {
+  id                    String    @id @default(cuid())
+  listingId             String
+  listing               Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  studentId             String
+  clientRequestId       String
+  scheduledFor          DateTime
+  rescheduleProposedFor DateTime?
+  status                String    @default("requested")
+  notes                 String?
+  adminResponse         String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([studentId, clientRequestId])
+  @@index([studentId, status, scheduledFor])
+  @@index([listingId, status, scheduledFor])
 }

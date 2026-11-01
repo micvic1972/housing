@@ -21,6 +21,7 @@ import multipart from "@fastify/multipart";
 import Fastify from "fastify";
 import { resolveCorsOrigins } from "./lib/cors-config.js";
 import { listingRoutes } from "./routes/listing.routes/listing.route.js";
+import { inspectionRoutes } from "./routes/inspection.routes/inspection.routes.js";
 
 // logger: true prints every request in the terminal, which helps while learning.
 const app = Fastify({ logger: true });
@@ -47,6 +48,7 @@ app.get("/health", async () => {
 
 // Attach the listing routes. register() is how Fastify groups them.
 await app.register(listingRoutes);
+await app.register(inspectionRoutes);
 
 // 4000 keeps it away from the student app (3000) and the admin (3001).
 const port = Number(process.env.PORT ?? 4000);

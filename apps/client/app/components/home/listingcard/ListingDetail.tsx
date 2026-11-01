@@ -45,6 +45,7 @@ import {
   isListingUnavailable,
 } from "../../../lib/listing-status";
 import { useStudentActivity } from "../../../lib/student-activity";
+import { useInspectionRequests } from "../../../lib/inspection-requests";
 import styles from "./ListingDetail.module.css";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
@@ -493,29 +494,71 @@ export default function ListingDetail({
 }) {
   const [tab, setTab] = useState<TabId>("overview");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [inspectionTime, setInspectionTime] = useState("");
+  const [inspectionRequestKey, setInspectionRequestKey] = useState("");
+  const [inspectionSubmitting, setInspectionSubmitting] = useState(false);
+  const [minInspectionValue, setMinInspectionValue] = useState("");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const uid = useId();
   const router = useRouter();
   const {
-    inspections,
     ready: activityReady,
     error: activityError,
-    requestInspection,
     startConversation,
   } = useStudentActivity();
-  const activeInspection = inspections.find(
+  const {
+    requests,
+    ready: inspectionsReady,
+    signedIn,
+    error: inspectionError,
+    createRequest,
+    acceptReschedule,
+    declineReschedule,
+  } = useInspectionRequests();
+  const activeInspection = requests.find(
     (inspection) =>
       inspection.listingId === listing.id &&
       (inspection.status === "requested" || inspection.status === "confirmed"),
   );
 
-  function requestLocalInspection() {
-    const saved = requestInspection(listing.id);
-    setActionMessage(
-      saved
-        ? "Demo request saved on this device only. It has not been sent to the property contact."
-        : "The demo request could not be saved on this device.",
-    );
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const minimum = new Date(Date.now() + 30 * 60 * 1000);
+      setMinInspectionValue(
+        new Date(minimum.getTime() - minimum.getTimezoneOffset() * 60_000)
+          .toISOString()
+          .slice(0, 16),
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  async function submitInspectionRequest() {
+    if (!inspectionTime) {
+      setActionMessage("Choose a date and time for your inspection request.");
+      return;
+    }
+    setInspectionSubmitting(true);
+    const requestId = inspectionRequestKey || crypto.randomUUID();
+    setInspectionRequestKey(requestId);
+    try {
+      const result = await createRequest(
+        listing.id,
+        new Date(inspectionTime).toISOString(),
+        requestId,
+      );
+      setActionMessage(
+        result.success
+          ? "Inspection request sent. It is not confirmed until the administrator responds."
+          : result.message,
+      );
+      if (result.success) {
+        setInspectionRequestKey("");
+        setInspectionTime("");
+      }
+    } finally {
+      setInspectionSubmitting(false);
+    }
   }
 
   function openLocalConversation() {
@@ -644,29 +687,109 @@ export default function ListingDetail({
 
       <section className={styles.studentActions} aria-label="Student actions">
         <div>
-          <p className={styles.actionEyebrow}>Next steps · local prototype</p>
+          <p className={styles.actionEyebrow}>Inspection request</p>
           <p className={styles.actionNote}>
-            These demo actions stay on this device. They don’t contact a
-            landlord or confirm an appointment.
+            Request a time to visit. An administrator must confirm it before it
+            becomes an appointment.
           </p>
         </div>
         {activeInspection ? (
+          <>
+            <p className={styles.actionState} role="status">
+              Inspection {activeInspection.status} ·{" "}
+              {new Date(activeInspection.scheduledFor).toLocaleString("en-NG")}
+            </p>
+            {activeInspection.rescheduleProposedFor ? (
+              <div className={styles.actionState} role="status">
+                <p>
+                  Proposed time:{" "}
+                  {new Date(
+                    activeInspection.rescheduleProposedFor,
+                  ).toLocaleString("en-NG")}
+                </p>
+                <button
+                  type="button"
+                  className={styles.actionButton}
+                  disabled={inspectionSubmitting}
+                  onClick={async () => {
+                    setInspectionSubmitting(true);
+                    const accepted = await acceptReschedule(
+                      activeInspection.id,
+                    );
+                    setActionMessage(
+                      accepted
+                        ? "The proposed time is confirmed."
+                        : "The proposed time could not be accepted. Review the error and retry.",
+                    );
+                    setInspectionSubmitting(false);
+                  }}
+                >
+                  Accept proposed time
+                </button>
+                <button
+                  type="button"
+                  className={styles.actionSecondary}
+                  disabled={inspectionSubmitting}
+                  onClick={async () => {
+                    setInspectionSubmitting(true);
+                    const declined = await declineReschedule(
+                      activeInspection.id,
+                    );
+                    setActionMessage(
+                      declined
+                        ? "The proposed time was declined; the original request remains."
+                        : "The proposed time could not be declined. Review the error and retry.",
+                    );
+                    setInspectionSubmitting(false);
+                  }}
+                >
+                  Keep original time
+                </button>
+              </div>
+            ) : null}
+            {activeInspection.adminResponse ? (
+              <p className={styles.actionState}>
+                Administrator response: {activeInspection.adminResponse}
+              </p>
+            ) : null}
+          </>
+        ) : !inspectionsReady ? (
           <p className={styles.actionState} role="status">
-            Inspection request saved locally ·{" "}
-            {activeInspection.status === "confirmed"
-              ? "confirmed"
-              : "waiting for a real contact"}
+            Loading your inspection requests…
           </p>
-        ) : (
-          <button
-            type="button"
+        ) : !signedIn ? (
+          <Link
             className={styles.actionButton}
-            disabled={!activityReady}
-            onClick={requestLocalInspection}
+            href={`/sign-in?redirect_url=${encodeURIComponent(
+              `/listings/${listing.id}`,
+            )}`}
           >
-            <CalendarDays size={17} aria-hidden />
-            Request inspection
-          </button>
+            Sign in to request an inspection
+          </Link>
+        ) : (
+          <>
+            <label>
+              Requested date and time
+              <input
+                type="datetime-local"
+                min={minInspectionValue}
+                value={inspectionTime}
+                onChange={(event) => {
+                  setInspectionTime(event.target.value);
+                  setInspectionRequestKey("");
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className={styles.actionButton}
+              disabled={!inspectionsReady || inspectionSubmitting}
+              onClick={submitInspectionRequest}
+            >
+              <CalendarDays size={17} aria-hidden />
+              Send inspection request
+            </button>
+          </>
         )}
         <button
           type="button"
@@ -685,6 +808,11 @@ export default function ListingDetail({
         {activityError ? (
           <p className={styles.actionError} role="alert">
             {activityError}
+          </p>
+        ) : null}
+        {inspectionError ? (
+          <p className={styles.actionError} role="alert">
+            {inspectionError}
           </p>
         ) : null}
       </section>

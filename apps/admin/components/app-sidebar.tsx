@@ -13,7 +13,7 @@
 // allowlisted administrator session.
 // ============================================================================
 
-import { Building2, X } from "lucide-react";
+import { Building2, CalendarDays, X } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -34,7 +34,10 @@ import {
 
 // The menu links. Each has an icon, because in the collapsed strip the icon
 // is all that shows. Adding a page later is a one-line change here.
-const NAV = [{ label: "Listings", href: "/", icon: Building2 }];
+const NAV = [
+  { label: "Listings", href: "/", icon: Building2 },
+  { label: "Inspections", href: "/inspections", icon: CalendarDays },
+];
 
 export function AppSidebar() {
   // Used to highlight the page the admin is currently on.

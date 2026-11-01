@@ -13,6 +13,7 @@ import ListingDetail, {
 import { useListings } from "../lib/listings-provider";
 import { useSavedListings } from "../lib/saved-listings";
 import { useStudentActivity } from "../lib/student-activity";
+import { useInspectionRequests } from "../lib/inspection-requests";
 import styles from "./page.module.css";
 
 export default function ProfileContent() {
@@ -27,11 +28,15 @@ export default function ProfileContent() {
     toggleSaved,
   } = useSavedListings();
   const {
-    inspections,
     conversations,
     ready: activityReady,
     error: activityError,
   } = useStudentActivity();
+  const {
+    requests: inspectionRequests,
+    ready: inspectionsReady,
+    error: inspectionError,
+  } = useInspectionRequests();
   const savedListings = listings.filter((listing) => savedIds.has(listing.id));
   const activeListing =
     listings.find((listing) => listing.id === openId) ?? null;
@@ -63,8 +68,9 @@ export default function ProfileContent() {
           </div>
         </div>
         <p className={styles.profileNote}>
-          Account identity is provided by your signed-in Clerk session. Saved
-          listings and prototype activity remain local to this device.
+          Account identity and inspection requests use your signed-in Clerk
+          session. Saved listings and message prototypes remain local to this
+          device.
         </p>
         <div className={styles.headerActions}>
           <Link className={styles.secondaryAction} href="/profile/settings">
@@ -97,13 +103,17 @@ export default function ProfileContent() {
         <Link
           className={styles.summaryTile}
           href="/inspection"
-          aria-label="View local inspection demo records"
+          aria-label="View inspection requests for this account"
         >
           <CalendarDays size={18} aria-hidden />
           <strong>
-            {!activityReady ? "…" : activityError ? "—" : inspections.length}
+            {!inspectionsReady
+              ? "…"
+              : inspectionError
+                ? "—"
+                : inspectionRequests.length}
           </strong>
-          <span>inspection demo records</span>
+          <span>inspection requests</span>
         </Link>
         <Link
           className={styles.summaryTile}
