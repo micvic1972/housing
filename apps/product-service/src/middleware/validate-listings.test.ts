@@ -54,3 +54,30 @@ test("rejects unknown fields and invalid enumerated values", async () => {
   assert.equal(unknown.statusCode, 400);
   assert.equal(invalidStatus.statusCode, 400);
 });
+
+test("accepts only paired, verified and in-range coordinates", async () => {
+  const valid = await validatePatch({
+    latitude: 6.25,
+    longitude: 6.18,
+    locationVerified: true,
+  });
+  const missingLongitude = await validatePatch({
+    latitude: 6.25,
+    locationVerified: true,
+  });
+  const unverified = await validatePatch({
+    latitude: 6.25,
+    longitude: 6.18,
+    locationVerified: false,
+  });
+  const outOfRange = await validatePatch({
+    latitude: 91,
+    longitude: 6.18,
+    locationVerified: true,
+  });
+
+  assert.equal(valid.statusCode, 200);
+  assert.equal(missingLongitude.statusCode, 400);
+  assert.equal(unverified.statusCode, 400);
+  assert.equal(outOfRange.statusCode, 400);
+});

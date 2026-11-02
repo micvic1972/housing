@@ -1,5 +1,6 @@
 import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type {} from "./require-clerk-user.js";
 
 export async function requireClerkAdmin(
   request: FastifyRequest,
@@ -26,7 +27,10 @@ export async function requireClerkAdmin(
   }
 
   const authorization = request.headers.authorization;
-  if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) {
+  if (
+    typeof authorization !== "string" ||
+    !authorization.startsWith("Bearer ")
+  ) {
     return reply.code(401).send({ error: "Admin authentication required" });
   }
 
@@ -49,4 +53,5 @@ export async function requireClerkAdmin(
   if (!adminIds.includes(userId)) {
     return reply.code(403).send({ error: "Administrator access required" });
   }
+  request.clerkUserId = userId;
 }

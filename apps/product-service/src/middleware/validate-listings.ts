@@ -4,8 +4,21 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 const KINDS = ["available", "construction", "expiring", "rented"];
-const STATUSES = ["active", "coming-soon", "expiring-soon", "rented", "unavailable"];
-const ROOM_TYPES = ["single", "self-contained", "shared", "studio", "one-bedroom", "two-bedroom"];
+const STATUSES = [
+  "active",
+  "coming-soon",
+  "expiring-soon",
+  "rented",
+  "unavailable",
+];
+const ROOM_TYPES = [
+  "single",
+  "self-contained",
+  "shared",
+  "studio",
+  "one-bedroom",
+  "two-bedroom",
+];
 const PRICE_PERIODS = ["year", "semester", "month"];
 const CONTACT_TYPES = ["owner", "agent", "university-partner"];
 const CHECKS = ["water", "power", "security", "in-person-visit"];
@@ -17,6 +30,8 @@ const NULLABLE_KEYS = new Set([
   "campus",
   "landmark",
   "distanceKm",
+  "latitude",
+  "longitude",
   "rating",
   "reviewCount",
   "contactType",
@@ -32,15 +47,42 @@ const NULLABLE_KEYS = new Set([
 
 // The only fields a listing may contain. Anything else is refused.
 const ALLOWED_KEYS = new Set([
-  "name", "kind", "status", "roomType", "area", "campus", "landmark", "distanceKm",
-  "priceAmount", "priceCurrency", "pricePeriod", "amenities", "verified",
-  "verifiedChecks", "rating", "reviewCount", "contactType",
-  "inspectionFeeStatus", "inspectionFeeAmount", "acceptedPeriods",
-  "requiresUpfrontYears", "hasSecurityPost", "isGatedCompound",
-  "popularityScore", "constructionProgress", "expiresAt", "insight",
+  "name",
+  "kind",
+  "status",
+  "roomType",
+  "area",
+  "campus",
+  "landmark",
+  "distanceKm",
+  "latitude",
+  "longitude",
+  "locationVerified",
+  "priceAmount",
+  "priceCurrency",
+  "pricePeriod",
+  "amenities",
+  "verified",
+  "verifiedChecks",
+  "rating",
+  "reviewCount",
+  "contactType",
+  "inspectionFeeStatus",
+  "inspectionFeeAmount",
+  "acceptedPeriods",
+  "requiresUpfrontYears",
+  "hasSecurityPost",
+  "isGatedCompound",
+  "popularityScore",
+  "constructionProgress",
+  "expiresAt",
+  "insight",
 ]);
 
-export async function validateListing(request: FastifyRequest, reply: FastifyReply) {
+export async function validateListing(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
   const body = request.body;
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return reply.code(400).send({ error: "Send the listing as a JSON object" });
@@ -52,7 +94,8 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
 
   // Unknown fields are refused so nobody can sneak in an id or a date.
   const unknown = Object.keys(b).filter((key) => !ALLOWED_KEYS.has(key));
-  if (unknown.length > 0) problems.push(`Unknown fields: ${unknown.join(", ")}`);
+  if (unknown.length > 0)
+    problems.push(`Unknown fields: ${unknown.join(", ")}`);
   if (Object.keys(b).length === 0) {
     problems.push("At least one listing field is required");
   }
@@ -64,7 +107,10 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
 
   // Text that must not be blank.
   for (const key of ["name", "area"]) {
-    if (has(key) && (typeof b[key] !== "string" || (b[key] as string).trim() === "")) {
+    if (
+      has(key) &&
+      (typeof b[key] !== "string" || (b[key] as string).trim() === "")
+    ) {
       problems.push(`${key} cannot be empty`);
     }
   }
@@ -94,7 +140,11 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
   listOf("verifiedChecks", CHECKS);
   listOf("acceptedPeriods", ACCEPTED_PERIODS);
 
-  if (has("amenities") && (!Array.isArray(b.amenities) || b.amenities.some((a) => typeof a !== "string"))) {
+  if (
+    has("amenities") &&
+    (!Array.isArray(b.amenities) ||
+      b.amenities.some((a) => typeof a !== "string"))
+  ) {
     problems.push("amenities must be a list of words");
   }
 
@@ -106,11 +156,15 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
       problems.push(`${key} must be a number`);
       return;
     }
-    if (integer && !Number.isInteger(v)) problems.push(`${key} must be a whole number`);
-    if (v < min || v > max) problems.push(`${key} must be between ${min} and ${max}`);
+    if (integer && !Number.isInteger(v))
+      problems.push(`${key} must be a whole number`);
+    if (v < min || v > max)
+      problems.push(`${key} must be between ${min} and ${max}`);
   };
   num("priceAmount", 1, 100_000_000, true);
   num("distanceKm", 0, 50);
+  num("latitude", -90, 90);
+  num("longitude", -180, 180);
   num("rating", 0, 5);
   num("reviewCount", 0, 100_000, true);
   num("inspectionFeeAmount", 1, 10_000_000, true);
@@ -119,8 +173,28 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
   num("constructionProgress", 0, 100, true);
 
   // Yes / no fields.
-  for (const key of ["verified", "hasSecurityPost", "isGatedCompound"]) {
-    if (has(key) && typeof b[key] !== "boolean") problems.push(`${key} must be true or false`);
+  for (const key of [
+    "verified",
+    "locationVerified",
+    "hasSecurityPost",
+    "isGatedCompound",
+  ]) {
+    if (has(key) && typeof b[key] !== "boolean")
+      problems.push(`${key} must be true or false`);
+  }
+
+  const hasLatitude = has("latitude");
+  const hasLongitude = has("longitude");
+  if (hasLatitude !== hasLongitude) {
+    problems.push("latitude and longitude must be provided together");
+  }
+  if ((hasLatitude || hasLongitude) && b.locationVerified !== true) {
+    problems.push(
+      "Coordinates can only be saved when their location is verified",
+    );
+  }
+  if (b.locationVerified === true && (!hasLatitude || !hasLongitude)) {
+    problems.push("Verified coordinates require both latitude and longitude");
   }
 
   // Honest-gap rule: a fee amount only makes sense when the fee is confirmed.
@@ -128,7 +202,9 @@ export async function validateListing(request: FastifyRequest, reply: FastifyRep
     problems.push("A confirmed inspection fee needs an amount");
   }
   if (has("inspectionFeeAmount") && b.inspectionFeeStatus !== "confirmed") {
-    problems.push("An inspection fee amount is only allowed when the fee is confirmed");
+    problems.push(
+      "An inspection fee amount is only allowed when the fee is confirmed",
+    );
   }
 
   if (has("expiresAt") && Number.isNaN(Date.parse(String(b.expiresAt)))) {

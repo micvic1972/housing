@@ -12,7 +12,7 @@ import ListingDetail, {
 } from "../components/home/listingcard/ListingDetail";
 import { useListings } from "../lib/listings-provider";
 import { useSavedListings } from "../lib/saved-listings";
-import { useStudentActivity } from "../lib/student-activity";
+import { useMessaging } from "../lib/messaging";
 import { useInspectionRequests } from "../lib/inspection-requests";
 import styles from "./page.module.css";
 
@@ -24,14 +24,15 @@ export default function ProfileContent() {
   const {
     savedIds,
     ready: savedReady,
+    signedIn,
     error: savedError,
     toggleSaved,
   } = useSavedListings();
   const {
     conversations,
-    ready: activityReady,
-    error: activityError,
-  } = useStudentActivity();
+    ready: messagesReady,
+    error: messagesError,
+  } = useMessaging();
   const {
     requests: inspectionRequests,
     ready: inspectionsReady,
@@ -68,9 +69,8 @@ export default function ProfileContent() {
           </div>
         </div>
         <p className={styles.profileNote}>
-          Account identity and inspection requests use your signed-in Clerk
-          session. Saved listings and message prototypes remain local to this
-          device.
+          Account identity, inspection requests, saved listings and messages use
+          your signed-in Clerk session.
         </p>
         <div className={styles.headerActions}>
           <Link className={styles.secondaryAction} href="/profile/settings">
@@ -92,13 +92,13 @@ export default function ProfileContent() {
         <Link
           className={styles.summaryTile}
           href="#saved-places"
-          aria-label="View saved places saved on this device"
+          aria-label="View saved places for this account"
         >
           <BookmarkCheck size={18} aria-hidden />
           <strong>
             {!savedReady ? "…" : savedError ? "—" : savedIds.size}
           </strong>
-          <span>saved on this device</span>
+          <span>saved places</span>
         </Link>
         <Link
           className={styles.summaryTile}
@@ -118,19 +118,19 @@ export default function ProfileContent() {
         <Link
           className={styles.summaryTile}
           href="/messages"
-          aria-label="View local message threads"
+          aria-label="View account messages"
         >
           <strong>
-            {!activityReady ? "…" : activityError ? "—" : conversations.length}
+            {!messagesReady ? "…" : messagesError ? "—" : conversations.length}
           </strong>
-          <span>local message threads</span>
+          <span>conversations</span>
         </Link>
       </section>
 
       <div className={styles.sectionHeading} id="saved-places" tabIndex={-1}>
         <div>
           <h2>Saved places</h2>
-          <p>Saved locally in this browser, not synced to your account.</p>
+          <p>Saved to your account and available across devices.</p>
         </div>
         {savedListings.length ? <span>{savedListings.length}</span> : null}
       </div>
@@ -140,9 +140,9 @@ export default function ProfileContent() {
           {savedError}
         </p>
       ) : null}
-      {activityError ? (
+      {messagesError ? (
         <p className={styles.error} role="alert">
-          {activityError}
+          {messagesError}
         </p>
       ) : null}
       {!savedReady || status === "loading" ? (
@@ -161,9 +161,20 @@ export default function ProfileContent() {
       {savedReady &&
       !savedError &&
       status === "ready" &&
-      savedListings.length === 0 ? (
+      savedListings.length === 0 &&
+      !signedIn ? (
         <section className={styles.message} role="status">
-          <p>You have not saved a place on this device yet.</p>
+          <p>Sign in to save places and sync them to your account.</p>
+          <Link href="/sign-in?redirect_url=%2Fprofile">Sign in</Link>
+        </section>
+      ) : null}
+      {savedReady &&
+      !savedError &&
+      status === "ready" &&
+      savedListings.length === 0 &&
+      signedIn ? (
+        <section className={styles.message} role="status">
+          <p>You have not saved a place yet.</p>
           <Link href="/">Find accommodation</Link>
         </section>
       ) : null}

@@ -13,7 +13,7 @@
 // allowlisted administrator session.
 // ============================================================================
 
-import { Building2, CalendarDays, X } from "lucide-react";
+import { Building2, CalendarDays, MessageCircle, X } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -37,6 +37,7 @@ import {
 const NAV = [
   { label: "Listings", href: "/", icon: Building2 },
   { label: "Inspections", href: "/inspections", icon: CalendarDays },
+  { label: "Messages", href: "/messages", icon: MessageCircle },
 ];
 
 export function AppSidebar() {

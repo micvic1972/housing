@@ -38,6 +38,11 @@ function isListingFormValues(value: unknown): value is ListingFormValues {
     isNullableString(value.campus) &&
     isNullableString(value.landmark) &&
     isNullableNumber(value.distanceKm) &&
+    isNullableNumber(value.latitude) &&
+    isNullableNumber(value.longitude) &&
+    typeof value.locationVerified === "boolean" &&
+    isNullableString(value.locationVerifiedBy) &&
+    isNullableString(value.locationVerifiedAt) &&
     typeof value.priceAmount === "number" &&
     typeof value.priceCurrency === "string" &&
     typeof value.pricePeriod === "string" &&

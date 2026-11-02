@@ -35,6 +35,11 @@ model Listing {
   campus     String?
   landmark   String?
   distanceKm Float?
+  latitude   Float?
+  longitude  Float?
+  locationVerified   Boolean   @default(false)
+  locationVerifiedBy String?
+  locationVerifiedAt DateTime?
 
   priceAmount   Int
   priceCurrency String @default("NGN")
@@ -66,7 +71,9 @@ model Listing {
   insight              String?
 
   images             ListingImage[]
+  savedBy            SavedListing[]
   inspectionRequests InspectionRequest[]
+  conversations      Conversation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,6 +95,17 @@ model ListingImage {
   @@index([listingId])
 }
 
+model SavedListing {
+  id        String   @id @default(cuid())
+  studentId String
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, listingId])
+  @@index([studentId])
+}
+
 model InspectionRequest {
   id                    String    @id @default(cuid())
   listingId             String
@@ -105,4 +123,35 @@ model InspectionRequest {
   @@unique([studentId, clientRequestId])
   @@index([studentId, status, scheduledFor])
   @@index([listingId, status, scheduledFor])
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  listingId       String
+  listing         Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  studentId       String
+  assignedAdminId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  messages        Message[]
+
+  @@unique([studentId, listingId])
+  @@index([studentId, updatedAt])
+  @@index([assignedAdminId, updatedAt])
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  senderRole      String
+  clientMessageId String
+  body            String
+  readAt          DateTime?
+  createdAt       DateTime     @default(now())
+
+  @@unique([conversationId, clientMessageId])
+  @@index([conversationId, createdAt])
+  @@index([conversationId, senderRole, readAt])
 }

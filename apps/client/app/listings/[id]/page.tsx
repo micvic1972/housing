@@ -221,8 +221,7 @@ export default function ListingPage() {
             ) : null}
             {savedError ? (
               <p className={styles.feedback} role="alert">
-                {savedError} Saved places are stored on this device only and
-                are not synced to an account.
+                {savedError}
               </p>
             ) : null}
             <article

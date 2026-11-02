@@ -32,6 +32,11 @@ export type ListingFormValues = {
   campus: string | null;
   landmark: string | null;
   distanceKm: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationVerified: boolean;
+  locationVerifiedBy: string | null;
+  locationVerifiedAt: string | null;
   priceAmount: number;
   priceCurrency: string;
   pricePeriod: string;
@@ -251,6 +256,9 @@ export default function ListingForm({
       : DEFAULT_SELECTS,
   );
   const [verified, setVerified] = useState(initialListing?.verified ?? false);
+  const [locationVerified, setLocationVerified] = useState(
+    initialListing?.locationVerified ?? false,
+  );
   const [checks, setChecks] = useState<string[]>(
     initialListing?.verifiedChecks ?? [],
   );
@@ -291,6 +299,7 @@ export default function ListingForm({
     form?.reset();
     setSel(DEFAULT_SELECTS);
     setVerified(false);
+    setLocationVerified(false);
     setChecks([]);
     setPeriods([]);
     setImageFiles([]);
@@ -377,6 +386,24 @@ export default function ListingForm({
 
     const feeStatus = sel.inspectionFeeStatus;
     const expires = text("expiresAt");
+    const latitude = num("latitude");
+    const longitude = num("longitude");
+
+    if (
+      locationVerified &&
+      (latitude === undefined ||
+        longitude === undefined ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180)
+    ) {
+      setMessage({
+        ok: false,
+        text: "Enter a valid latitude and longitude before confirming the location.",
+      });
+      return;
+    }
 
     const payload = {
       name: text("name"),
@@ -388,6 +415,9 @@ export default function ListingForm({
       campus: optional(sel.campus === "unset" ? undefined : sel.campus),
       landmark: optional(text("landmark")),
       distanceKm: optional(num("distanceKm")),
+      latitude: locationVerified ? latitude : null,
+      longitude: locationVerified ? longitude : null,
+      locationVerified,
       priceAmount: num("priceAmount"),
       priceCurrency: "NGN",
       pricePeriod: sel.pricePeriod,
@@ -592,6 +622,62 @@ export default function ListingForm({
               className={num16}
             />
           </Field>
+          <div className="md:col-span-2 rounded-lg border p-4">
+            <p className="font-medium">Verified map location</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enter exact coordinates from the property owner’s location pin or
+              an on-site GPS reading. Do not estimate from a campus or landmark.
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field label="Latitude">
+                <Input
+                  name="latitude"
+                  type="number"
+                  step="any"
+                  min="-90"
+                  max="90"
+                  defaultValue={initialListing?.latitude ?? ""}
+                  disabled={!locationVerified}
+                  className={num16}
+                />
+              </Field>
+              <Field label="Longitude">
+                <Input
+                  name="longitude"
+                  type="number"
+                  step="any"
+                  min="-180"
+                  max="180"
+                  defaultValue={initialListing?.longitude ?? ""}
+                  disabled={!locationVerified}
+                  className={num16}
+                />
+              </Field>
+            </div>
+            <label className="mt-4 flex min-h-11 items-center gap-3 text-sm">
+              <Checkbox
+                checked={locationVerified}
+                onCheckedChange={(checked) =>
+                  setLocationVerified(checked === true)
+                }
+              />
+              I confirmed this exact point with the property contact or on site.
+            </label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Only confirmed coordinates are saved and displayed to students.
+              Unconfirmed locations stay off the map.
+            </p>
+            {initialListing?.locationVerified ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Last confirmed by{" "}
+                {initialListing.locationVerifiedBy ?? "administrator"}
+                {initialListing.locationVerifiedAt
+                  ? ` on ${new Date(initialListing.locationVerifiedAt).toLocaleString("en-NG")}`
+                  : ""}
+                .
+              </p>
+            ) : null}
+          </div>
           <Field
             label="Amenities"
             hint="Separate with commas, e.g. water, generator, wifi"

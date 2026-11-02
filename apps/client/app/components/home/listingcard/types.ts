@@ -31,6 +31,7 @@ export interface ListingLocation {
   area: string;
   campus?: string;
   landmark?: string;
+  coordinates?: { latitude: number; longitude: number };
   /** Distance from UNIDEL, in kilometres. Students treat distance as a second price tag. */
   distanceFromUniversityKm?: number;
 }

@@ -9,6 +9,7 @@ import { FiltersProvider } from "./components/filter/FilterProvider";
 import { ListingsProvider } from "./lib/listings-provider";
 import { SavedListingsProvider } from "./lib/saved-listings";
 import { StudentActivityProvider } from "./lib/student-activity";
+import { MessagingProvider } from "./lib/messaging";
 import { InspectionRequestsProvider } from "./lib/inspection-requests";
 import { AppearanceProvider } from "./lib/appearance-provider";
 import { isClientClerkConfigured } from "./lib/clerk-config";
@@ -57,9 +58,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <ListingsProvider>
         <SavedListingsProvider>
           <StudentActivityProvider>
-            <InspectionRequestsProvider enabled={isClientClerkConfigured()}>
-              <AppShell>{children}</AppShell>
-            </InspectionRequestsProvider>
+            <MessagingProvider>
+              <InspectionRequestsProvider enabled={isClientClerkConfigured()}>
+                <AppShell>{children}</AppShell>
+              </InspectionRequestsProvider>
+            </MessagingProvider>
           </StudentActivityProvider>
         </SavedListingsProvider>
       </ListingsProvider>

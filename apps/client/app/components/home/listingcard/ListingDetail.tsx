@@ -44,8 +44,8 @@ import {
   getListingStatusLabel,
   isListingUnavailable,
 } from "../../../lib/listing-status";
-import { useStudentActivity } from "../../../lib/student-activity";
 import { useInspectionRequests } from "../../../lib/inspection-requests";
+import { useMessaging } from "../../../lib/messaging";
 import styles from "./ListingDetail.module.css";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
@@ -497,15 +497,16 @@ export default function ListingDetail({
   const [inspectionTime, setInspectionTime] = useState("");
   const [inspectionRequestKey, setInspectionRequestKey] = useState("");
   const [inspectionSubmitting, setInspectionSubmitting] = useState(false);
+  const [messageSubmitting, setMessageSubmitting] = useState(false);
   const [minInspectionValue, setMinInspectionValue] = useState("");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const uid = useId();
   const router = useRouter();
   const {
-    ready: activityReady,
-    error: activityError,
-    startConversation,
-  } = useStudentActivity();
+    ready: messagesReady,
+    signedIn: messagesSignedIn,
+    createConversation,
+  } = useMessaging();
   const {
     requests,
     ready: inspectionsReady,
@@ -561,13 +562,20 @@ export default function ListingDetail({
     }
   }
 
-  function openLocalConversation() {
-    const conversationId = startConversation(listing.id);
-    if (!conversationId) {
-      setActionMessage("The local demo conversation could not be created.");
-      return;
+  async function openConversation() {
+    setMessageSubmitting(true);
+    try {
+      const conversationId = await createConversation(listing.id);
+      router.push(`/messages/${encodeURIComponent(conversationId)}`);
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not start a conversation. Try again.",
+      );
+    } finally {
+      setMessageSubmitting(false);
     }
-    router.push(`/messages/${encodeURIComponent(conversationId)}`);
   }
 
   const signals = getSignals(listing);
@@ -791,23 +799,32 @@ export default function ListingDetail({
             </button>
           </>
         )}
-        <button
-          type="button"
-          className={styles.actionSecondary}
-          disabled={!activityReady}
-          onClick={openLocalConversation}
-        >
-          <MessageCircle size={17} aria-hidden />
-          Open local message demo
-        </button>
+        {messagesSignedIn ? (
+          <button
+            type="button"
+            className={styles.actionSecondary}
+            disabled={!messagesReady || messageSubmitting}
+            onClick={() => void openConversation()}
+          >
+            <MessageCircle size={17} aria-hidden />
+            {messageSubmitting
+              ? "Opening conversation…"
+              : "Message property admin"}
+          </button>
+        ) : (
+          <Link
+            className={styles.actionSecondary}
+            href={`/sign-in?redirect_url=${encodeURIComponent(
+              `/listings/${listing.id}`,
+            )}`}
+          >
+            <MessageCircle size={17} aria-hidden />
+            Sign in to message
+          </Link>
+        )}
         {actionMessage ? (
           <p className={styles.actionState} role="status">
             {actionMessage}
-          </p>
-        ) : null}
-        {activityError ? (
-          <p className={styles.actionError} role="alert">
-            {activityError}
           </p>
         ) : null}
         {inspectionError ? (

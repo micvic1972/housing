@@ -1,36 +1,45 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { MessageCircle, ArrowUpRight } from "lucide-react";
-import { useListings } from "../lib/listings-provider";
-import { useStudentActivity } from "../lib/student-activity";
+import { useMessaging } from "../lib/messaging";
 import styles from "./page.module.css";
 
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
-  return date.toLocaleDateString("en-NG", {
+  return date.toLocaleString("en-NG", {
     day: "numeric",
     month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 export default function MessagesPage() {
-  const { listings, status } = useListings();
-  const { conversations, ready, error } = useStudentActivity();
-  const names = new Map(listings.map((listing) => [listing.id, listing.name]));
+  const { conversations, ready, signedIn, error, refresh } = useMessaging();
+
+  useEffect(() => {
+    if (!signedIn) return;
+    const timer = window.setInterval(() => {
+      void refresh().catch(() => undefined);
+    }, 10_000);
+    return () => window.clearInterval(timer);
+  }, [refresh, signedIn]);
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <p className={styles.eyebrow}>Your conversations</p>
         <h1>Messages</h1>
-        <p>Keep a local draft thread for a place you’re considering.</p>
+        <p>Messages are stored with your account and linked to each listing.</p>
       </header>
 
       <div className={styles.prototypeNotice} role="note">
         <MessageCircle size={18} aria-hidden />
-        Local prototype · messages stay on this device and are not delivered.
+        New messages are saved by the product service. Inbox updates check for
+        new messages every few seconds and recover when your connection returns.
       </div>
 
       {error ? (
@@ -38,43 +47,53 @@ export default function MessagesPage() {
           {error}
         </p>
       ) : null}
-      {!ready || status === "loading" ? (
+      {!ready ? (
         <p className={styles.state} role="status">
           Loading conversations…
         </p>
       ) : null}
-      {status === "error" ? (
-        <p className={styles.state} role="alert">
-          Listing context could not be loaded. Your locally saved threads remain
-          on this device.
-        </p>
+      {error ? (
+        <button
+          className={styles.backButton}
+          type="button"
+          onClick={() => void refresh().catch(() => undefined)}
+        >
+          Retry loading messages
+        </button>
       ) : null}
 
-      {ready && !error && conversations.length === 0 ? (
+      {ready && !signedIn ? (
+        <section className={styles.empty} role="status">
+          <h2>Sign in to view your messages</h2>
+          <p>
+            Conversations are private to the student account that started them.
+          </p>
+          <Link href="/sign-in?redirect_url=%2Fmessages">Sign in</Link>
+        </section>
+      ) : null}
+
+      {ready && signedIn && !error && conversations.length === 0 ? (
         <section className={styles.empty} role="status">
           <span className={styles.emptyIcon} aria-hidden>
             <MessageCircle size={24} />
           </span>
-          <h2>No local message threads yet</h2>
+          <h2>No conversations yet</h2>
           <p>
-            Open a listing and choose “Open local message demo” to create a
-            thread. No property contact is represented or contacted.
+            Open a listing and message the property administrator to start a
+            private conversation.
           </p>
           <Link href="/">Browse places</Link>
         </section>
       ) : null}
 
-      {ready && conversations.length > 0 ? (
-        <section
-          className={styles.inbox}
-          aria-label="Local conversation threads"
-        >
-          <h2>Threads on this device</h2>
+      {ready && signedIn && conversations.length > 0 ? (
+        <section className={styles.inbox} aria-label="Conversations">
+          <h2>Your conversations</h2>
           {conversations
             .slice()
-            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
             .map((conversation) => {
-              const latest = conversation.messages.at(-1);
+              const latest = conversation.lastMessage;
               return (
                 <Link
                   className={styles.thread}
@@ -85,17 +104,24 @@ export default function MessagesPage() {
                     <MessageCircle size={19} />
                   </span>
                   <span className={styles.threadContent}>
-                    <strong>
-                      {names.get(conversation.listingId) ??
-                        "Listing no longer available"}
-                    </strong>
+                    <strong>{conversation.listing.name}</strong>
                     <span>
-                      {latest?.text ??
-                        "No local message yet. Open to write a draft."}
+                      {latest
+                        ? `${latest.senderRole === "student" ? "You" : "Property administrator"}: ${latest.body}`
+                        : "No messages yet. Send the first message."}
                     </span>
                   </span>
                   <span className={styles.threadDate}>
-                    {formatDate(latest?.createdAt ?? conversation.createdAt)}
+                    {conversation.unreadCount > 0 ? (
+                      <span className={styles.unreadBadge}>
+                        {conversation.unreadCount} unread
+                      </span>
+                    ) : null}
+                    <time
+                      dateTime={latest?.createdAt ?? conversation.updatedAt}
+                    >
+                      {formatDate(latest?.createdAt ?? conversation.updatedAt)}
+                    </time>
                     <ArrowUpRight size={15} aria-hidden />
                   </span>
                 </Link>

@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { CalendarDays, Clock3, ExternalLink } from "lucide-react";
+import { useState } from "react";
 import {
   useInspectionRequests,
   type InspectionRequest,
 } from "../lib/inspection-requests";
 import styles from "./page.module.css";
+
+const statusLabels: Record<InspectionRequest["status"], string> = {
+  requested: "Pending review",
+  confirmed: "Confirmed",
+  declined: "Declined",
+  cancelled: "Cancelled",
+  completed: "Completed",
+};
 
 function formatDate(value: string, includeTime = false): string {
   const date = new Date(value);
@@ -25,20 +34,19 @@ function InspectionCard({
   onCancel,
   onAcceptProposal,
   onDeclineProposal,
+  busy,
 }: {
   inspection: ReturnType<typeof useInspectionRequests>["requests"][number];
   onCancel?: () => void;
   onAcceptProposal?: () => void;
   onDeclineProposal?: () => void;
+  busy: boolean;
 }) {
-  const statusLabel =
-    inspection.status[0].toUpperCase() + inspection.status.slice(1);
-
   return (
     <article className={styles.card}>
       <div className={styles.cardTop}>
         <span className={`${styles.status} ${styles[inspection.status]}`}>
-          {statusLabel}
+          {statusLabels[inspection.status]}
         </span>
         <span className={styles.requestDate}>
           <Clock3 size={14} aria-hidden />
@@ -47,13 +55,22 @@ function InspectionCard({
       </div>
       <h3>{inspection.listing.name}</h3>
       <p className={styles.requestDate}>
-        Requested visit: {formatDate(inspection.scheduledFor, true)}
+        {inspection.status === "requested" ? "Requested time" : "Visit time"}:{" "}
+        {formatDate(inspection.scheduledFor, true)}
       </p>
       {inspection.rescheduleProposedFor ? (
-        <p className={styles.requestDate}>
-          Proposed alternative:{" "}
-          {formatDate(inspection.rescheduleProposedFor, true)}
-        </p>
+        <div className={styles.proposal}>
+          <p>
+            New time suggested:{" "}
+            <strong>
+              {formatDate(inspection.rescheduleProposedFor, true)}
+            </strong>
+          </p>
+          <p>
+            Accept the suggestion to confirm the new time, or keep the current
+            time.
+          </p>
+        </div>
       ) : null}
       {inspection.adminResponse ? (
         <p className={styles.cardNote}>
@@ -64,7 +81,7 @@ function InspectionCard({
         {inspection.status === "requested"
           ? "Sent for review. The requested time is not confirmed yet."
           : inspection.status === "confirmed"
-            ? "The requested visit has been confirmed."
+            ? "This visit is confirmed."
             : inspection.status === "declined"
               ? "The requested visit was declined."
               : inspection.status === "completed"
@@ -86,24 +103,27 @@ function InspectionCard({
             className={styles.cancelAction}
             type="button"
             onClick={onCancel}
+            disabled={busy}
           >
-            Cancel request
+            {busy ? "Updating…" : "Cancel request"}
           </button>
         ) : null}
         {onAcceptProposal ? (
           <button
-            className={styles.cancelAction}
+            className={styles.primaryAction}
             type="button"
             onClick={onAcceptProposal}
+            disabled={busy}
           >
-            Accept proposed time
+            {busy ? "Updating…" : "Accept proposed time"}
           </button>
         ) : null}
         {onDeclineProposal ? (
           <button
-            className={styles.cancelAction}
+            className={styles.secondaryAction}
             type="button"
             onClick={onDeclineProposal}
+            disabled={busy}
           >
             Keep original time
           </button>
@@ -124,6 +144,7 @@ export default function InspectionPage() {
     acceptReschedule,
     declineReschedule,
   } = useInspectionRequests();
+  const [busyId, setBusyId] = useState<string | null>(null);
   const pending = inspections.filter((item) => item.status === "requested");
   const upcoming = inspections.filter((item) => item.status === "confirmed");
   const past = inspections.filter(
@@ -133,16 +154,26 @@ export default function InspectionPage() {
       item.status === "declined",
   );
 
+  async function runAction(requestId: string, action: () => Promise<boolean>) {
+    setBusyId(requestId);
+    try {
+      await action();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function group(
     title: string,
     description: string,
     entries: InspectionRequest[],
   ) {
+    const headingId = `${title.toLowerCase().replaceAll(" ", "-")}-heading`;
     return (
-      <section className={styles.group} aria-label={title}>
+      <section className={styles.group} aria-labelledby={headingId}>
         <div className={styles.groupHeading}>
           <div>
-            <h2>{title}</h2>
+            <h2 id={headingId}>{title}</h2>
             <p>{description}</p>
           </div>
           <span>{entries.length}</span>
@@ -155,19 +186,33 @@ export default function InspectionPage() {
                 inspection={inspection}
                 onCancel={
                   inspection.status === "requested"
-                    ? () => void cancelRequest(inspection.id)
+                    ? () =>
+                        void runAction(inspection.id, () =>
+                          cancelRequest(inspection.id),
+                        )
                     : undefined
                 }
                 onAcceptProposal={
-                  inspection.rescheduleProposedFor
-                    ? () => void acceptReschedule(inspection.id)
+                  inspection.rescheduleProposedFor &&
+                  (inspection.status === "requested" ||
+                    inspection.status === "confirmed")
+                    ? () =>
+                        void runAction(inspection.id, () =>
+                          acceptReschedule(inspection.id),
+                        )
                     : undefined
                 }
                 onDeclineProposal={
-                  inspection.rescheduleProposedFor
-                    ? () => void declineReschedule(inspection.id)
+                  inspection.rescheduleProposedFor &&
+                  (inspection.status === "requested" ||
+                    inspection.status === "confirmed")
+                    ? () =>
+                        void runAction(inspection.id, () =>
+                          declineReschedule(inspection.id),
+                        )
                     : undefined
                 }
+                busy={busyId === inspection.id}
               />
             ))}
           </div>
@@ -195,19 +240,14 @@ export default function InspectionPage() {
         visiting.
       </div>
 
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
       {!ready ? (
         <p className={styles.state} role="status">
           Loading inspection requests…
         </p>
       ) : null}
       {error ? (
-        <section className={styles.state} role="alert">
-          <p>Inspection requests could not be loaded.</p>
+        <section className={styles.state} role="alert" aria-live="assertive">
+          <p>{error}</p>
           <button type="button" onClick={reload}>
             Retry
           </button>
@@ -215,25 +255,25 @@ export default function InspectionPage() {
       ) : null}
       {ready && !signedIn ? (
         <section className={styles.empty} role="status">
-          <p>Sign in to see requests connected to your account.</p>
+          <p>Sign in to see inspection requests connected to your account.</p>
           <Link href="/sign-in?redirect_url=%2Finspection">Sign in</Link>
         </section>
       ) : null}
-      {ready && signedIn && !error ? (
+      {ready && signedIn && (!error || inspections.length > 0) ? (
         <div className={styles.groups}>
           {group(
             "Pending requests",
-            "Waiting for a real contact; not confirmed.",
+            "Awaiting a response. These times are not confirmed.",
             pending,
           )}
           {group(
             "Upcoming",
-            "Only confirmed appointment records appear here.",
+            "Confirmed visits. Check the date and time before you go.",
             upcoming,
           )}
           {group(
             "Past activity",
-            "Declined, completed, or cancelled requests.",
+            "A record of declined, completed, and cancelled requests.",
             past,
           )}
         </div>

@@ -15,6 +15,26 @@ type InspectionRequest = {
   listing: { id: string; name: string; area: string; campus: string | null };
 };
 
+type RequestStatus = InspectionRequest["status"];
+type StatusFilter = "all" | RequestStatus;
+
+const filters: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All requests" },
+  { value: "requested", label: "Needs review" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "declined", label: "Declined" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const statusStyles: Record<RequestStatus, string> = {
+  requested: "border-amber-300 bg-amber-50 text-amber-900",
+  confirmed: "border-emerald-300 bg-emerald-50 text-emerald-900",
+  declined: "border-rose-300 bg-rose-50 text-rose-900",
+  cancelled: "border-slate-300 bg-slate-100 text-slate-700",
+  completed: "border-sky-300 bg-sky-50 text-sky-900",
+};
+
 function localDateTime(value: string | number) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
@@ -32,6 +52,7 @@ function readableDate(value: string) {
 
 export default function InspectionRequests() {
   const [requests, setRequests] = useState<InspectionRequest[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -40,6 +61,20 @@ export default function InspectionRequests() {
   >({});
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [minimumInspectionTime, setMinimumInspectionTime] = useState("");
+  const visibleRequests =
+    statusFilter === "all"
+      ? requests
+      : requests.filter((request) => request.status === statusFilter);
+  const responseFor = (request: InspectionRequest) =>
+    responses[request.id] ?? request.adminResponse ?? "";
+  const hasResponse = (request: InspectionRequest) =>
+    Boolean(responseFor(request).trim());
+  const hasValidProposal = (requestId: string) => {
+    const value = rescheduleTimes[requestId];
+    return (
+      Boolean(value && minimumInspectionTime) && value >= minimumInspectionTime
+    );
+  };
 
   const load = useCallback(async () => {
     setReady(false);
@@ -149,16 +184,48 @@ export default function InspectionRequests() {
       </section>
     );
   }
-  if (requests.length === 0) {
-    return (
-      <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-        No inspection requests have been submitted.
-      </p>
-    );
-  }
-
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
+      <div className="space-y-3 rounded-xl border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Request queue</h2>
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {requests.length} {requests.length === 1 ? "request" : "requests"}
+            {visibleRequests.length !== requests.length
+              ? ` · ${visibleRequests.length} shown`
+              : ""}
+          </p>
+        </div>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Filter inspection requests by status"
+        >
+          {filters.map((filter) => {
+            const count =
+              filter.value === "all"
+                ? requests.length
+                : requests.filter((request) => request.status === filter.value)
+                    .length;
+            const selected = statusFilter === filter.value;
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setStatusFilter(filter.value)}
+                className={`min-h-10 rounded-full border px-3 text-sm font-medium ${
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "hover:bg-muted"
+                }`}
+              >
+                {filter.label} <span>({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       {error ? (
         <p
           role="alert"
@@ -168,8 +235,19 @@ export default function InspectionRequests() {
         </p>
       ) : null}
       {!ready ? <p role="status">Refreshing requests…</p> : null}
-      {requests.map((request) => (
-        <article className="space-y-3 rounded-xl border p-4" key={request.id}>
+      {visibleRequests.length === 0 ? (
+        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+          {requests.length === 0
+            ? "No inspection requests have been submitted."
+            : `No ${filters.find((filter) => filter.value === statusFilter)?.label.toLowerCase()} to show.`}
+        </p>
+      ) : null}
+      {visibleRequests.map((request) => (
+        <article
+          className="space-y-3 rounded-xl border p-4"
+          key={request.id}
+          aria-busy={busyId === request.id}
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold">{request.listing.name}</h2>
@@ -181,8 +259,12 @@ export default function InspectionRequests() {
                 Student account: {request.studentId}
               </p>
             </div>
-            <span className="rounded-full border px-3 py-1 text-sm capitalize">
-              {request.status}
+            <span
+              className={`rounded-full border px-3 py-1 text-sm font-medium ${
+                statusStyles[request.status]
+              }`}
+            >
+              {request.status === "requested" ? "Needs review" : request.status}
             </span>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
@@ -222,6 +304,8 @@ export default function InspectionRequests() {
               Response to student
               <textarea
                 className="min-h-20 w-full rounded-md border bg-background p-2"
+                aria-label={`Response to student for ${request.listing.name}`}
+                aria-describedby={`response-help-${request.id}`}
                 maxLength={1000}
                 value={responses[request.id] ?? request.adminResponse ?? ""}
                 disabled={busyId === request.id}
@@ -233,9 +317,20 @@ export default function InspectionRequests() {
                   }));
                 }}
               />
+              <span
+                id={`response-help-${request.id}`}
+                className="text-xs text-muted-foreground"
+              >
+                Required before confirming, declining, or proposing a time.
+                {` ${responseFor(request).length}/1000 characters.`}
+              </span>
             </label>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex flex-wrap items-end gap-2 border-t pt-3"
+            role="group"
+            aria-label={`Actions for ${request.listing.name}`}
+          >
             {request.status === "requested" ? (
               <>
                 <button
@@ -244,17 +339,12 @@ export default function InspectionRequests() {
                   disabled={
                     busyId === request.id ||
                     Boolean(request.rescheduleProposedFor) ||
-                    !(
-                      responses[request.id] ??
-                      request.adminResponse ??
-                      ""
-                    ).trim()
+                    !hasResponse(request)
                   }
                   onClick={() =>
                     void update(request.id, {
                       status: "confirmed",
-                      adminResponse:
-                        responses[request.id] ?? request.adminResponse ?? "",
+                      adminResponse: responseFor(request),
                     })
                   }
                 >
@@ -263,19 +353,11 @@ export default function InspectionRequests() {
                 <button
                   type="button"
                   className="min-h-10 rounded-md border px-3"
-                  disabled={
-                    busyId === request.id ||
-                    !(
-                      responses[request.id] ??
-                      request.adminResponse ??
-                      ""
-                    ).trim()
-                  }
+                  disabled={busyId === request.id || !hasResponse(request)}
                   onClick={() =>
                     void update(request.id, {
                       status: "declined",
-                      adminResponse:
-                        responses[request.id] ?? request.adminResponse ?? "",
+                      adminResponse: responseFor(request),
                     })
                   }
                 >
@@ -286,8 +368,8 @@ export default function InspectionRequests() {
             {request.status === "requested" ||
             request.status === "confirmed" ? (
               <>
-                <label className="flex min-h-10 items-center gap-2 text-sm">
-                  Propose a different time
+                <label className="flex min-h-10 flex-wrap items-center gap-2 text-sm">
+                  <span>Propose a different time</span>
                   <input
                     type="datetime-local"
                     aria-label={`Reschedule ${request.listing.name}`}
@@ -313,28 +395,17 @@ export default function InspectionRequests() {
                   className="min-h-10 rounded-md border px-3"
                   onClick={() => {
                     const value = rescheduleTimes[request.id];
-                    if (
-                      value &&
-                      (
-                        responses[request.id] ??
-                        request.adminResponse ??
-                        ""
-                      ).trim()
-                    ) {
+                    if (value && hasResponse(request)) {
                       void update(request.id, {
                         scheduledFor: new Date(value).toISOString(),
-                        adminResponse:
-                          responses[request.id] ?? request.adminResponse ?? "",
+                        adminResponse: responseFor(request),
                       });
                     }
                   }}
                   disabled={
                     busyId === request.id ||
-                    !(
-                      responses[request.id] ??
-                      request.adminResponse ??
-                      ""
-                    ).trim()
+                    !hasResponse(request) ||
+                    !hasValidProposal(request.id)
                   }
                 >
                   Send time proposal

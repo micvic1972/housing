@@ -76,6 +76,115 @@
     var(--surface);
 }
 
+.mapSection {
+  margin: 4px 0 18px;
+}
+
+.mapResults {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.mapCanvasColumn {
+  min-width: 0;
+}
+
+.mapListingPanel {
+  max-height: 680px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.mapListingPanel h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.mapListingPanel > p {
+  margin: 6px 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mapListingCards {
+  display: grid;
+  gap: 8px;
+}
+
+.mapListingCards .locationCard {
+  min-height: 66px;
+  padding: 10px 11px;
+}
+
+.mapListingCards .locationText strong {
+  font-size: 14px;
+}
+
+.mapListingCards .locationText > span {
+  font-size: 12px;
+}
+
+.mapListingCards .price {
+  max-width: 112px;
+  font-size: 12px;
+}
+
+.allResultsLink {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--soft-line);
+  border-radius: 11px;
+  background: var(--primary-tint);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mapFrame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.mapCanvas {
+  width: 100%;
+  height: clamp(340px, 62vh, 680px);
+  background: #e8edf0;
+}
+
+.mapError,
+.mapNote {
+  margin: 0;
+  padding: 10px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mapAttribution {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  z-index: 500;
+  margin: 0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 85%);
+  color: #333;
+  font-size: 10px;
+}
+
 .mapIcon,
 .pin {
   display: grid;
@@ -159,7 +268,13 @@
 
 .locationCard:hover {
   border-color: var(--soft-line);
-  background: #24334a;
+  background: var(--primary-tint);
+}
+
+.locationCard:focus-visible,
+.allResultsLink:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 2px;
 }
 
 .locationText {
@@ -224,6 +339,14 @@
   .mapUnavailable > button {
     grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .mapResults {
+    grid-template-columns: 1fr;
+  }
+
+  .mapListingPanel {
+    max-height: 360px;
   }
 
   .locationCard {

@@ -79,9 +79,21 @@ export async function createListing(
     });
   }
 
+  const locationVerified = body?.locationVerified === true;
+  if (locationVerified && !request.clerkUserId) {
+    return reply
+      .code(401)
+      .send({ error: "Administrator authentication required" });
+  }
+
   try {
     const created = await prisma.listing.create({
-      data: body as never,
+      data: {
+        ...body,
+        locationVerified,
+        locationVerifiedBy: locationVerified ? request.clerkUserId : null,
+        locationVerifiedAt: locationVerified ? new Date() : null,
+      } as never,
     });
 
     return reply.code(201).send(created);
@@ -656,6 +668,24 @@ export async function updateListing(
 ) {
   const body = request.body as Record<string, unknown>;
   const data = { ...body };
+
+  const coordinatesChanged =
+    Object.hasOwn(data, "latitude") || Object.hasOwn(data, "longitude");
+  if (data.locationVerified === true) {
+    if (!request.clerkUserId) {
+      return reply
+        .code(401)
+        .send({ error: "Administrator authentication required" });
+    }
+    data.locationVerifiedBy = request.clerkUserId;
+    data.locationVerifiedAt = new Date();
+  } else if (data.locationVerified === false || coordinatesChanged) {
+    data.locationVerified = false;
+    data.latitude = null;
+    data.longitude = null;
+    data.locationVerifiedBy = null;
+    data.locationVerifiedAt = null;
+  }
 
   if (typeof data.expiresAt === "string") {
     data.expiresAt = new Date(data.expiresAt);

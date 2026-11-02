@@ -119,6 +119,22 @@
   border-top: 1px solid var(--border-soft);
   color: var(--text);
   text-decoration: none;
+  transition: background-color 140ms ease;
+}
+
+.thread:hover {
+  background: var(--primary-tint);
+}
+
+.thread:focus-visible,
+.backLink:focus-visible,
+.listingLink:focus-visible,
+.empty > a:focus-visible,
+.composerFooter button:focus-visible,
+.backButton:focus-visible,
+.inlineRetry:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 3px;
 }
 
 .thread:first-of-type {
@@ -160,6 +176,16 @@
   justify-items: end;
   gap: 6px;
   flex: none;
+  white-space: nowrap;
+}
+
+.unreadBadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .backLink {
@@ -176,8 +202,12 @@
 .transcript {
   display: grid;
   min-height: 180px;
+  max-height: min(64vh, 680px);
   align-content: start;
   gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 16px;
 }
 
 .transcriptEmpty {
@@ -187,7 +217,6 @@
 }
 
 .message {
-  justify-self: end;
   max-width: min(86%, 620px);
   padding: 12px 14px;
   border: 1px solid var(--soft-line);
@@ -196,10 +225,28 @@
   overflow-wrap: anywhere;
 }
 
+.messageOwn {
+  justify-self: end;
+}
+
+.messageOther {
+  justify-self: start;
+  border-radius: 15px 15px 15px 4px;
+  background: var(--surface);
+}
+
 .message p {
   margin: 0;
   line-height: 1.45;
   white-space: pre-wrap;
+}
+
+.messageSender {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .message time {
@@ -207,6 +254,14 @@
   margin-top: 7px;
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.readState {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: right;
 }
 
 .composer {
@@ -278,6 +333,14 @@
   color: var(--urgent);
 }
 
+.inlineRetry {
+  margin-left: 8px;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .backButton {
   margin-top: 12px;
   border: 1px solid var(--border);
@@ -298,9 +361,15 @@
   }
 
   .threadDate {
-    max-width: 52px;
-    overflow-wrap: anywhere;
-    text-align: right;
+    min-width: 82px;
+  }
+
+  .threadDate svg {
+    display: none;
+  }
+
+  .transcript {
+    max-height: 60vh;
   }
 
   .composerFooter {

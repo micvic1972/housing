@@ -14,13 +14,35 @@ import {
   uploadListingImages,
 } from "../../controller/listing/listing-image.controller.js";
 import {
+  listSavedListings,
+  saveListing,
+  unsaveListing,
+} from "../../controller/listing/saved-listings.controller.js";
+import {
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_IMAGES,
 } from "../../lib/supabase-storage.js";
 import { requireClerkAdmin } from "../../middleware/require-clerk-admin.js";
+import { requireClerkUser } from "../../middleware/require-clerk-user.js";
 import { validateListing } from "../../middleware/validate-listings.js";
 
 export async function listingRoutes(app: FastifyInstance) {
+  app.get(
+    "/saved-listings",
+    { preHandler: requireClerkUser },
+    listSavedListings,
+  );
+  app.post<{ Params: { listingId: string } }>(
+    "/saved-listings/:listingId",
+    { preHandler: requireClerkUser },
+    saveListing,
+  );
+  app.delete<{ Params: { listingId: string } }>(
+    "/saved-listings/:listingId",
+    { preHandler: requireClerkUser },
+    unsaveListing,
+  );
+
   app.get("/listings", listListings);
   app.get("/listings/:id", getListing);
   app.post(

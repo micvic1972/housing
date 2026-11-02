@@ -195,8 +195,7 @@ export default function Page() {
 
         {savedError ? (
           <p className={styles.saveError} role="alert">
-            {savedError} Saved places are stored on this device only and are not
-            synced to an account.
+            {savedError}
           </p>
         ) : null}
         {discoveryStatus === "error" && discoveryListings.length > 0 ? (

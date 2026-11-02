@@ -22,6 +22,11 @@ export type ApiListing = {
   campus: string | null;
   landmark: string | null;
   distanceKm: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationVerified: boolean;
+  locationVerifiedBy: string | null;
+  locationVerifiedAt: string | null;
   priceAmount: number;
   priceCurrency: string;
   pricePeriod: string;
@@ -62,7 +67,10 @@ function toImages(row: ApiListing): ListingImage[] {
 function toContact(row: ApiListing): ListingContact | undefined {
   let inspectionFee: ListingContact["inspectionFee"];
   if (row.inspectionFeeStatus === "none") inspectionFee = null;
-  if (row.inspectionFeeStatus === "confirmed" && row.inspectionFeeAmount !== null) {
+  if (
+    row.inspectionFeeStatus === "confirmed" &&
+    row.inspectionFeeAmount !== null
+  ) {
     inspectionFee = { amount: row.inspectionFeeAmount, currency: "NGN" };
   }
   if (!row.contactType && inspectionFee === undefined) return undefined;
@@ -75,15 +83,18 @@ function toContact(row: ApiListing): ListingContact | undefined {
 }
 
 function toPaymentOptions(row: ApiListing): ListingPaymentOptions | undefined {
-  if (row.acceptedPeriods.length === 0 && row.requiresUpfrontYears === null) return undefined;
+  if (row.acceptedPeriods.length === 0 && row.requiresUpfrontYears === null)
+    return undefined;
   return {
-    acceptedPeriods: row.acceptedPeriods as ListingPaymentOptions["acceptedPeriods"],
+    acceptedPeriods:
+      row.acceptedPeriods as ListingPaymentOptions["acceptedPeriods"],
     requiresUpfrontYears: row.requiresUpfrontYears ?? undefined,
   };
 }
 
 function toSafety(row: ApiListing): ListingSafety | undefined {
-  if (row.hasSecurityPost === null && row.isGatedCompound === null) return undefined;
+  if (row.hasSecurityPost === null && row.isGatedCompound === null)
+    return undefined;
   return {
     hasSecurityPost: row.hasSecurityPost ?? undefined,
     isGatedCompound: row.isGatedCompound ?? undefined,
@@ -102,6 +113,12 @@ export function mapListing(row: ApiListing): Listing {
       campus: row.campus ?? undefined,
       landmark: row.landmark ?? undefined,
       distanceFromUniversityKm: row.distanceKm ?? undefined,
+      coordinates:
+        row.locationVerified &&
+        typeof row.latitude === "number" &&
+        typeof row.longitude === "number"
+          ? { latitude: row.latitude, longitude: row.longitude }
+          : undefined,
     },
     pricing: {
       amount: row.priceAmount,
