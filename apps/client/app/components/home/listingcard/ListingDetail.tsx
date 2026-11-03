@@ -46,6 +46,7 @@ import {
 } from "../../../lib/listing-status";
 import { useInspectionRequests } from "../../../lib/inspection-requests";
 import { useMessaging } from "../../../lib/messaging";
+import { getApiErrorMessage } from "../../../lib/api-errors";
 import styles from "./ListingDetail.module.css";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
@@ -569,9 +570,7 @@ export default function ListingDetail({
       router.push(`/messages/${encodeURIComponent(conversationId)}`);
     } catch (error) {
       setActionMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not start a conversation. Try again.",
+        getApiErrorMessage(error, "Could not start a conversation. Try again."),
       );
     } finally {
       setMessageSubmitting(false);

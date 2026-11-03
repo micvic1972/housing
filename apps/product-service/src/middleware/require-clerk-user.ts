@@ -1,5 +1,6 @@
 import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { resolveClerkAuthorizedParties } from "../lib/cors-config.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -13,10 +14,18 @@ export async function requireClerkUser(
 ) {
   const secretKey = process.env.CLERK_SECRET_KEY;
   const jwtKey = process.env.CLERK_JWT_KEY;
-  const authorizedParties = (process.env.CLERK_AUTHORIZED_PARTIES ?? "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  let authorizedParties: string[];
+  try {
+    authorizedParties = resolveClerkAuthorizedParties();
+  } catch (error) {
+    request.log.error(
+      { err: error },
+      "Clerk student access configuration is invalid",
+    );
+    return reply
+      .code(503)
+      .send({ error: "Clerk student access is not configured correctly" });
+  }
 
   if ((!secretKey && !jwtKey) || authorizedParties.length === 0) {
     return reply

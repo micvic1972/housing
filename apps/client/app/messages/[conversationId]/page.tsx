@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { useMessaging, type Conversation } from "../../lib/messaging";
+import { getApiErrorMessage } from "../../lib/api-errors";
 import { getRetryMessage, type RetryMessage } from "../../lib/message-retry";
 import styles from "../page.module.css";
 
@@ -82,9 +83,10 @@ export default function ConversationPage() {
       } catch (loadError) {
         if (active && userId === requestUserId) {
           setConnectionIssue(
-            loadError instanceof Error
-              ? loadError.message
-              : "Could not reconnect to this conversation.",
+            getApiErrorMessage(
+              loadError,
+              "Could not reconnect to this conversation.",
+            ),
           );
         }
       } finally {
@@ -138,9 +140,10 @@ export default function ConversationPage() {
     } catch (sendFailure) {
       if (lastUserId.current === requestUserId) {
         setSendError(
-          sendFailure instanceof Error
-            ? sendFailure.message
-            : "Message was not confirmed. Retry to safely check delivery.",
+          getApiErrorMessage(
+            sendFailure,
+            "Message was not confirmed. Retry to safely check delivery.",
+          ),
         );
       }
     } finally {
@@ -163,9 +166,10 @@ export default function ConversationPage() {
     } catch (loadError) {
       if (lastUserId.current === requestUserId) {
         setConnectionIssue(
-          loadError instanceof Error
-            ? loadError.message
-            : "Could not reconnect to this conversation.",
+          getApiErrorMessage(
+            loadError,
+            "Could not reconnect to this conversation.",
+          ),
         );
       }
     } finally {

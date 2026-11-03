@@ -14,6 +14,11 @@ import {
 } from "react";
 import { apiBase } from "./api-base";
 import {
+  getApiErrorMessage,
+  getApiResponseError,
+  readApiServerMessage,
+} from "./api-errors";
+import {
   isAccountDataVisible,
   isCurrentAccountRequest,
   type AccountScope,
@@ -134,14 +139,13 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
         });
         const body: unknown = await response.json();
         if (!response.ok) {
-          const message =
-            body &&
-            typeof body === "object" &&
-            "error" in body &&
-            typeof body.error === "string"
-              ? body.error
-              : `Saved places failed (${response.status})`;
-          throw new Error(message);
+          throw new Error(
+            getApiResponseError(
+              response.status,
+              readApiServerMessage(body),
+              "Loading saved places failed",
+            ),
+          );
         }
 
         if (
@@ -159,9 +163,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
         ) {
           setLoadedUserId(userId);
           setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Could not load saved places.",
+            getApiErrorMessage(loadError, "Could not load saved places."),
           );
         }
       } finally {
@@ -233,13 +235,11 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
         if (!isCurrentAccountRequest(accountScope.current, userId))
           return false;
         if (!response.ok) {
-          const message =
-            body &&
-            typeof body === "object" &&
-            "error" in body &&
-            typeof body.error === "string"
-              ? body.error
-              : `Saved place update failed (${response.status})`;
+          const message = getApiResponseError(
+            response.status,
+            readApiServerMessage(body),
+            "Saved place update failed",
+          );
           setSavedIds(previous);
           setError(message);
           return false;
@@ -262,9 +262,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
           return false;
         setSavedIds(previous);
         setError(
-          saveError instanceof Error
-            ? saveError.message
-            : "Could not update saved places.",
+          getApiErrorMessage(saveError, "Could not update saved places."),
         );
         return false;
       }

@@ -1,6 +1,7 @@
 import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type {} from "./require-clerk-user.js";
+import { resolveClerkAuthorizedParties } from "../lib/cors-config.js";
 
 export async function requireClerkAdmin(
   request: FastifyRequest,
@@ -12,10 +13,18 @@ export async function requireClerkAdmin(
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  const authorizedParties = (process.env.CLERK_AUTHORIZED_PARTIES ?? "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  let authorizedParties: string[];
+  try {
+    authorizedParties = resolveClerkAuthorizedParties();
+  } catch (error) {
+    request.log.error(
+      { err: error },
+      "Clerk administrator access configuration is invalid",
+    );
+    return reply.code(503).send({
+      error: "Clerk administrator access is not configured correctly",
+    });
+  }
   if (
     (!secretKey && !jwtKey) ||
     adminIds.length === 0 ||

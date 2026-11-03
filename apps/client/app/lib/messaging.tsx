@@ -14,6 +14,11 @@ import {
 } from "react";
 import { apiBase } from "./api-base";
 import {
+  getApiErrorMessage,
+  getApiResponseError,
+  readApiServerMessage,
+} from "./api-errors";
+import {
   isAccountDataVisible,
   isCurrentAccountRequest,
   type AccountScope,
@@ -58,18 +63,6 @@ type MessagingValue = {
 };
 
 const MessagingContext = createContext<MessagingValue | null>(null);
-
-function readError(body: unknown, fallback: string): string {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof body.error === "string"
-  ) {
-    return body.error;
-  }
-  return fallback;
-}
 
 function readData<T>(body: unknown, fallback: string): T {
   if (!body || typeof body !== "object" || !("data" in body)) {
@@ -151,7 +144,11 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       const body: unknown = await response.json();
       if (!response.ok) {
         throw new Error(
-          readError(body, `Messages failed (${response.status})`),
+          getApiResponseError(
+            response.status,
+            readApiServerMessage(body),
+            "Loading messages failed",
+          ),
         );
       }
       const data = readData<ConversationSummary[]>(
@@ -173,11 +170,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       }
       loadedUserIdRef.current = requestUserId;
       setLoadedUserId(requestUserId);
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Could not load messages.",
-      );
+      setError(getApiErrorMessage(loadError, "Could not load messages."));
       throw loadError;
     } finally {
       if (isCurrentAccountRequest(accountScope.current, requestUserId)) {
@@ -206,7 +199,11 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       const body: unknown = await response.json();
       if (!response.ok) {
         throw new Error(
-          readError(body, `Conversation failed (${response.status})`),
+          getApiResponseError(
+            response.status,
+            readApiServerMessage(body),
+            "Loading conversation failed",
+          ),
         );
       }
       const conversation = readData<Conversation>(
@@ -234,7 +231,11 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       const body: unknown = await response.json();
       if (!response.ok) {
         throw new Error(
-          readError(body, `Could not start conversation (${response.status})`),
+          getApiResponseError(
+            response.status,
+            readApiServerMessage(body),
+            "Could not start conversation",
+          ),
         );
       }
       const conversation = readData<{ id: string }>(
@@ -269,7 +270,11 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       const body: unknown = await response.json();
       if (!response.ok) {
         throw new Error(
-          readError(body, `Could not send message (${response.status})`),
+          getApiResponseError(
+            response.status,
+            readApiServerMessage(body),
+            "Could not send message",
+          ),
         );
       }
       const message = readData<Message>(body, "Message response is invalid.");

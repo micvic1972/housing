@@ -11,6 +11,11 @@ import {
   type ReactNode,
 } from "react";
 import { apiBase } from "./api-base";
+import {
+  getApiErrorMessage,
+  getApiResponseError,
+  readApiServerMessage,
+} from "./api-errors";
 
 export type InspectionRequest = {
   id: string;
@@ -88,7 +93,6 @@ function AuthenticatedInspectionRequests({
   const [loadedForUser, setLoadedForUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authRequired, setAuthRequired] = useState(false);
   const [version, setVersion] = useState(0);
 
   const reload = useCallback(() => setVersion((current) => current + 1), []);
@@ -107,19 +111,18 @@ function AuthenticatedInspectionRequests({
         setRequests([]);
         setLoadedForUser(null);
         setLoading(false);
-        setAuthRequired(false);
         setError(null);
         return;
       }
 
       setLoading(true);
-      setAuthRequired(false);
       void (async () => {
         try {
           const token = await getToken();
           if (!token) {
-            setAuthRequired(true);
-            throw new Error("Sign in again to load inspection requests.");
+            throw new Error(
+              "Your session token is unavailable. Sign out and back in to load inspection requests.",
+            );
           }
           const response = await fetch(`${apiBase()}/inspections`, {
             headers: { authorization: `Bearer ${token}` },
@@ -128,15 +131,13 @@ function AuthenticatedInspectionRequests({
           });
           const body: unknown = await response.json();
           if (!response.ok) {
-            if (response.status === 401) setAuthRequired(true);
-            const message =
-              typeof body === "object" &&
-              body !== null &&
-              "error" in body &&
-              typeof body.error === "string"
-                ? body.error
-                : `Inspection requests failed (${response.status})`;
-            throw new Error(message);
+            throw new Error(
+              getApiResponseError(
+                response.status,
+                readApiServerMessage(body),
+                "Inspection requests failed",
+              ),
+            );
           }
           if (
             typeof body !== "object" ||
@@ -154,9 +155,10 @@ function AuthenticatedInspectionRequests({
         } catch (loadError) {
           if (!controller.signal.aborted) {
             setError(
-              loadError instanceof Error
-                ? loadError.message
-                : "Could not load inspection requests.",
+              getApiErrorMessage(
+                loadError,
+                "Could not load inspection requests.",
+              ),
             );
           }
         } finally {
@@ -184,7 +186,11 @@ function AuthenticatedInspectionRequests({
     ): Promise<{ success: true } | { success: false; message: string }> => {
       try {
         const token = await getToken();
-        if (!token) throw new Error("Sign in again to request an inspection.");
+        if (!token) {
+          throw new Error(
+            "Your session token is unavailable. Sign out and back in to request an inspection.",
+          );
+        }
         const response = await fetch(`${apiBase()}/inspections`, {
           method: "POST",
           headers: {
@@ -199,15 +205,13 @@ function AuthenticatedInspectionRequests({
         });
         const body: unknown = await response.json();
         if (!response.ok) {
-          if (response.status === 401) setAuthRequired(true);
-          const message =
-            typeof body === "object" &&
-            body !== null &&
-            "error" in body &&
-            typeof body.error === "string"
-              ? body.error
-              : `Inspection request failed (${response.status})`;
-          throw new Error(message);
+          throw new Error(
+            getApiResponseError(
+              response.status,
+              readApiServerMessage(body),
+              "Inspection request failed",
+            ),
+          );
         }
         if (
           typeof body !== "object" ||
@@ -226,10 +230,10 @@ function AuthenticatedInspectionRequests({
         setError(null);
         return { success: true };
       } catch (requestError) {
-        const message =
-          requestError instanceof Error
-            ? requestError.message
-            : "Could not submit the inspection request.";
+        const message = getApiErrorMessage(
+          requestError,
+          "Could not submit the inspection request.",
+        );
         setError(message);
         return { success: false, message };
       }
@@ -241,7 +245,11 @@ function AuthenticatedInspectionRequests({
     async (requestId: string) => {
       try {
         const token = await getToken();
-        if (!token) throw new Error("Sign in again to cancel this request.");
+        if (!token) {
+          throw new Error(
+            "Your session token is unavailable. Sign out and back in to cancel this request.",
+          );
+        }
         const response = await fetch(
           `${apiBase()}/inspections/${encodeURIComponent(requestId)}/cancel`,
           {
@@ -251,29 +259,23 @@ function AuthenticatedInspectionRequests({
         );
         if (!response.ok) {
           const body: unknown = await response.json().catch(() => null);
-          const message =
-            typeof body === "object" &&
-            body !== null &&
-            "error" in body &&
-            typeof body.error === "string"
-              ? body.error
-              : `Cancellation failed (${response.status})`;
-          throw new Error(message);
+          throw new Error(
+            getApiResponseError(
+              response.status,
+              readApiServerMessage(body),
+              "Cancellation failed",
+            ),
+          );
         }
         reload();
         setError(null);
         return true;
       } catch (cancelError) {
-        if (
-          cancelError instanceof Error &&
-          cancelError.message.toLowerCase().includes("sign in")
-        ) {
-          setAuthRequired(true);
-        }
         setError(
-          cancelError instanceof Error
-            ? cancelError.message
-            : "Could not cancel inspection request.",
+          getApiErrorMessage(
+            cancelError,
+            "Could not cancel inspection request.",
+          ),
         );
         return false;
       }
@@ -285,7 +287,11 @@ function AuthenticatedInspectionRequests({
     async (requestId: string) => {
       try {
         const token = await getToken();
-        if (!token) throw new Error("Sign in again to accept this time.");
+        if (!token) {
+          throw new Error(
+            "Your session token is unavailable. Sign out and back in to accept this time.",
+          );
+        }
         const response = await fetch(
           `${apiBase()}/inspections/${encodeURIComponent(requestId)}/accept-reschedule`,
           {
@@ -295,23 +301,23 @@ function AuthenticatedInspectionRequests({
         );
         if (!response.ok) {
           const body: unknown = await response.json().catch(() => null);
-          const message =
-            typeof body === "object" &&
-            body !== null &&
-            "error" in body &&
-            typeof body.error === "string"
-              ? body.error
-              : `Accepting the proposed time failed (${response.status})`;
-          throw new Error(message);
+          throw new Error(
+            getApiResponseError(
+              response.status,
+              readApiServerMessage(body),
+              "Accepting the proposed time failed",
+            ),
+          );
         }
         reload();
         setError(null);
         return true;
       } catch (acceptError) {
         setError(
-          acceptError instanceof Error
-            ? acceptError.message
-            : "Could not accept the proposed time.",
+          getApiErrorMessage(
+            acceptError,
+            "Could not accept the proposed time.",
+          ),
         );
         return false;
       }
@@ -323,7 +329,11 @@ function AuthenticatedInspectionRequests({
     async (requestId: string) => {
       try {
         const token = await getToken();
-        if (!token) throw new Error("Sign in again to decline this time.");
+        if (!token) {
+          throw new Error(
+            "Your session token is unavailable. Sign out and back in to decline this time.",
+          );
+        }
         const response = await fetch(
           `${apiBase()}/inspections/${encodeURIComponent(requestId)}/decline-reschedule`,
           {
@@ -333,23 +343,23 @@ function AuthenticatedInspectionRequests({
         );
         if (!response.ok) {
           const body: unknown = await response.json().catch(() => null);
-          const message =
-            typeof body === "object" &&
-            body !== null &&
-            "error" in body &&
-            typeof body.error === "string"
-              ? body.error
-              : `Declining the proposed time failed (${response.status})`;
-          throw new Error(message);
+          throw new Error(
+            getApiResponseError(
+              response.status,
+              readApiServerMessage(body),
+              "Declining the proposed time failed",
+            ),
+          );
         }
         reload();
         setError(null);
         return true;
       } catch (declineError) {
         setError(
-          declineError instanceof Error
-            ? declineError.message
-            : "Could not decline the proposed time.",
+          getApiErrorMessage(
+            declineError,
+            "Could not decline the proposed time.",
+          ),
         );
         return false;
       }
@@ -364,7 +374,7 @@ function AuthenticatedInspectionRequests({
     () => ({
       requests,
       ready,
-      signedIn: Boolean(isSignedIn && !authRequired),
+      signedIn: Boolean(isSignedIn),
       error,
       reload,
       createRequest,
@@ -376,7 +386,6 @@ function AuthenticatedInspectionRequests({
       requests,
       ready,
       isSignedIn,
-      authRequired,
       error,
       reload,
       createRequest,
