@@ -1,10 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
+import { isClerkKeyPairAllowed } from "./clerk-config";
 
 export function clerkAdminIsConfigured(): boolean {
   return Boolean(
-    process.env.CLERK_SECRET_KEY &&
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-      configuredAdminIds().length > 0,
+    isClerkKeyPairAllowed(
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      process.env.CLERK_SECRET_KEY,
+    ) && configuredAdminIds().length > 0,
   );
 }
 

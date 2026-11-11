@@ -2,13 +2,13 @@ import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type {} from "./require-clerk-user.js";
 import { resolveClerkAuthorizedParties } from "../lib/cors-config.js";
+import { getClerkVerificationKeys } from "../lib/clerk-config.js";
 
 export async function requireClerkAdmin(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  const jwtKey = process.env.CLERK_JWT_KEY;
+  const verificationKeys = getClerkVerificationKeys();
   const adminIds = (process.env.CLERK_ADMIN_USER_IDS ?? "")
     .split(",")
     .map((id) => id.trim())
@@ -26,12 +26,13 @@ export async function requireClerkAdmin(
     });
   }
   if (
-    (!secretKey && !jwtKey) ||
+    !verificationKeys ||
     adminIds.length === 0 ||
     authorizedParties.length === 0
   ) {
     return reply.code(503).send({
-      error: "Clerk administrator access is not configured on the server",
+      error:
+        "Clerk administrator access is not configured for this environment",
     });
   }
 
@@ -46,8 +47,7 @@ export async function requireClerkAdmin(
   let userId: string | undefined;
   try {
     const verified = await verifyToken(authorization.slice("Bearer ".length), {
-      ...(secretKey ? { secretKey } : {}),
-      ...(jwtKey ? { jwtKey } : {}),
+      ...verificationKeys,
       authorizedParties,
     });
     if (typeof verified.sub !== "string") {

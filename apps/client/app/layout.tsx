@@ -53,13 +53,14 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const clerkConfigured = isClientClerkConfigured();
   const app = (
     <FiltersProvider>
       <ListingsProvider>
         <SavedListingsProvider>
           <StudentActivityProvider>
             <MessagingProvider>
-              <InspectionRequestsProvider enabled={isClientClerkConfigured()}>
+              <InspectionRequestsProvider enabled={clerkConfigured}>
                 <AppShell>{children}</AppShell>
               </InspectionRequestsProvider>
             </MessagingProvider>
@@ -83,7 +84,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: appearanceBootstrap }}
         />
         <AppearanceProvider>
-          {isClientClerkConfigured() ? (
+          {clerkConfigured ? (
             <ClerkProvider
               signInUrl="/sign-in"
               signUpUrl="/sign-up"
@@ -96,7 +97,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {app}
             </ClerkProvider>
           ) : (
-            app
+            <main className="mx-auto flex min-h-screen max-w-xl items-center p-6">
+              <section className="space-y-3 rounded-xl border bg-card p-6">
+                <h1 className="text-xl font-semibold">
+                  Student sign-in unavailable
+                </h1>
+                <p className="text-sm text-muted-foreground" role="alert">
+                  Configure a matching Clerk key pair for this environment.
+                  Production must use Clerk Production keys.
+                </p>
+              </section>
+            </main>
           )}
         </AppearanceProvider>
       </body>

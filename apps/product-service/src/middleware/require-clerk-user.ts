@@ -1,6 +1,7 @@
 import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { resolveClerkAuthorizedParties } from "../lib/cors-config.js";
+import { getClerkVerificationKeys } from "../lib/clerk-config.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -12,8 +13,7 @@ export async function requireClerkUser(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  const jwtKey = process.env.CLERK_JWT_KEY;
+  const verificationKeys = getClerkVerificationKeys();
   let authorizedParties: string[];
   try {
     authorizedParties = resolveClerkAuthorizedParties();
@@ -27,10 +27,10 @@ export async function requireClerkUser(
       .send({ error: "Clerk student access is not configured correctly" });
   }
 
-  if ((!secretKey && !jwtKey) || authorizedParties.length === 0) {
-    return reply
-      .code(503)
-      .send({ error: "Clerk student access is not configured on the server" });
+  if (!verificationKeys || authorizedParties.length === 0) {
+    return reply.code(503).send({
+      error: "Clerk student access is not configured for this environment",
+    });
   }
 
   const authorization = request.headers.authorization;
@@ -43,8 +43,7 @@ export async function requireClerkUser(
 
   try {
     const verified = await verifyToken(authorization.slice("Bearer ".length), {
-      ...(secretKey ? { secretKey } : {}),
-      ...(jwtKey ? { jwtKey } : {}),
+      ...verificationKeys,
       authorizedParties,
     });
     if (typeof verified.sub !== "string" || verified.sub.length === 0) {

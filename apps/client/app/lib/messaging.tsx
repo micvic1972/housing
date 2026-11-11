@@ -45,7 +45,10 @@ export type ConversationSummary = {
   unreadCount: number;
 };
 
-export type Conversation = ConversationSummary & { messages: Message[] };
+export type ConversationDetail = Omit<
+  ConversationSummary,
+  "lastMessage" | "unreadCount"
+> & { messages: Message[] };
 
 type MessagingValue = {
   conversations: ConversationSummary[];
@@ -53,7 +56,7 @@ type MessagingValue = {
   signedIn: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  openConversation: (id: string) => Promise<Conversation>;
+  openConversation: (id: string) => Promise<ConversationDetail>;
   createConversation: (listingId: string) => Promise<string>;
   sendMessage: (
     id: string,
@@ -206,7 +209,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
           ),
         );
       }
-      const conversation = readData<Conversation>(
+      const conversation = readData<ConversationDetail>(
         body,
         "Conversation response is invalid.",
       );

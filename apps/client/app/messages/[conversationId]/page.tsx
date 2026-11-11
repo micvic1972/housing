@@ -5,7 +5,10 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
-import { useMessaging, type Conversation } from "../../lib/messaging";
+import {
+  useMessaging,
+  type ConversationDetail,
+} from "../../lib/messaging";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { getRetryMessage, type RetryMessage } from "../../lib/message-retry";
 import styles from "../page.module.css";
@@ -17,7 +20,7 @@ export default function ConversationPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [connectionIssue, setConnectionIssue] = useState<string | null>(null);
-  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);

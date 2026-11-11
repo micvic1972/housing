@@ -1,16 +1,18 @@
 .page {
-  width: min(100%, 1120px);
+  width: min(100%, 1160px);
   margin: 0 auto;
-  padding: 24px 0 40px;
+  padding: 28px 20px 56px;
 }
 
 .header {
-  max-width: 720px;
-  margin: 0 0 20px;
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+  margin: 0 0 18px;
 }
 
 .eyebrow {
-  margin: 0 0 7px;
+  margin: 0;
   color: var(--primary-soft);
   font-size: 12px;
   font-weight: 750;
@@ -20,8 +22,8 @@
 
 .header h1 {
   margin: 0;
-  font-size: clamp(26px, 4vw, 38px);
-  line-height: 1.12;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.08;
 }
 
 .header p:last-child,
@@ -33,12 +35,13 @@
 
 .viewSwitch {
   display: inline-flex;
-  gap: 4px;
-  margin: 16px 0;
   padding: 4px;
+  gap: 4px;
+  margin: 6px 0 18px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--surface);
+  background: rgba(15, 23, 42, 0.02);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.025);
 }
 
 .viewSwitch button {
@@ -54,26 +57,22 @@
 }
 
 .viewSwitch .activeView {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), rgba(59, 130, 246, 0.82));
   color: var(--on-primary);
+  box-shadow: 0 10px 18px rgba(59, 130, 246, 0.18);
 }
 
 .mapUnavailable {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   margin: 4px 0 18px;
-  padding: clamp(16px, 3vw, 24px);
+  padding: clamp(18px, 3vw, 28px);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background:
-    radial-gradient(
-      ellipse at 0 100%,
-      rgba(59, 130, 246, 0.12),
-      transparent 60%
-    ),
-    var(--surface);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(16, 185, 129, 0.04));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .mapSection {
@@ -82,8 +81,8 @@
 
 .mapResults {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.85fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.85fr);
+  gap: 18px;
   align-items: start;
 }
 
@@ -98,15 +97,16 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.04);
 }
 
 .mapListingPanel h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .mapListingPanel > p {
-  margin: 6px 0 12px;
+  margin: 7px 0 14px;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
@@ -118,8 +118,8 @@
 }
 
 .mapListingCards .locationCard {
-  min-height: 66px;
-  padding: 10px 11px;
+  min-height: 70px;
+  padding: 12px 11px;
 }
 
 .mapListingCards .locationText strong {
@@ -140,9 +140,9 @@
   min-height: 42px;
   margin-top: 12px;
   padding: 0 12px;
-  border: 1px solid var(--soft-line);
-  border-radius: 11px;
-  background: var(--primary-tint);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.06);
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
@@ -154,7 +154,8 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--surface);
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.08), rgba(15, 23, 42, 0.02));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .mapCanvas {
@@ -197,7 +198,7 @@
   width: 50px;
   height: 50px;
   border-radius: 16px;
-  background: var(--primary-tint);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .mapUnavailable h2,
@@ -208,7 +209,7 @@
 }
 
 .mapUnavailable p {
-  margin: 5px 0 0;
+  margin: 6px 0 0;
   font-size: 14px;
 }
 
@@ -217,10 +218,11 @@
   min-height: 42px;
   padding: 0 15px;
   border-radius: 12px;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), rgba(59, 130, 246, 0.82));
   color: var(--on-primary);
   font-weight: 700;
   white-space: nowrap;
+  box-shadow: 0 10px 18px rgba(59, 130, 246, 0.18);
 }
 
 .filterNote {
@@ -236,7 +238,8 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin: 0 0 10px;
+  gap: 12px;
+  margin: 0 0 12px;
 }
 
 .resultsHeading span {
@@ -245,8 +248,19 @@
 }
 
 .resultsHeading label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.resultsHeading select {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
 }
 
 .locationCard {
@@ -260,6 +274,7 @@
   border-radius: 16px;
   background: var(--surface);
   text-align: left;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.025);
 }
 
 .locationCard + .locationCard {
@@ -267,8 +282,8 @@
 }
 
 .locationCard:hover {
-  border-color: var(--soft-line);
-  background: var(--primary-tint);
+  border-color: rgba(96, 165, 250, 0.35);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(15, 23, 42, 0));
 }
 
 .locationCard:focus-visible,
@@ -330,6 +345,7 @@
 @media (max-width: 620px) {
   .page {
     padding-top: 18px;
+    padding-inline: 14px;
   }
 
   .mapUnavailable {
@@ -347,6 +363,11 @@
 
   .mapListingPanel {
     max-height: 360px;
+  }
+
+  .resultsHeading {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .locationCard {

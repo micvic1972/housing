@@ -28,10 +28,10 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
         {!configured ? (
           <div className={styles.setup} role="status">
-            <strong>Sign-in is not configured on this app yet.</strong>
+            <strong>Sign-in is not configured for this app.</strong>
             <span>
-              Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in
-              apps/client/.env.local, then restart the client.
+              Configure matching Clerk keys for this environment. Production
+              deployments must use keys from the Clerk Production instance.
             </span>
           </div>
         ) : isSignIn ? (

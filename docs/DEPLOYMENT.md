@@ -29,6 +29,7 @@ migrations and must be applied only after checking the target database.
 - Admin frontend: `https://delta-housing-admin.vercel.app`
 - Product service: `https://delta-housing.onrender.com`
 
+Use one Clerk Production instance for the student app, admin app, and API.
 In the existing Render service, set both `CORS_ALLOWED_ORIGINS` and
 `CLERK_AUTHORIZED_PARTIES` to:
 
@@ -37,11 +38,39 @@ https://delta-housing.vercel.app,https://delta-housing-admin.vercel.app
 ```
 
 The application includes these two canonical production origins in the
-production allowlists as a safeguard, but the Render values should still be
-explicitly corrected. A missing `CLERK_AUTHORIZED_PARTIES` configuration is
-reported as a server configuration error, not as a signed-out student.
-In both Vercel projects, replace development Clerk keys with a matching
-production key pair from the same Clerk production instance, then redeploy.
+production allowlists as a safeguard, but both Render variables must still be
+explicitly set. Missing or invalid authentication configuration fails closed
+with a server configuration error. Production applications fail closed when
+given test Clerk keys; development builds may use a matching test key pair.
+
+## Clerk Production setup
+
+1. In Clerk Dashboard, select the existing **Production** instance for Delta
+   Housing. Confirm its API keys are production keys; do not copy them into the
+   repository or send them in chat.
+2. In that instance's domain/origin settings, add these exact application
+   origins:
+   - `https://delta-housing.vercel.app`
+   - `https://delta-housing-admin.vercel.app`
+3. Configure the student sign-in and sign-up URLs as
+   `https://delta-housing.vercel.app/sign-in` and
+   `https://delta-housing.vercel.app/sign-up`. Keep the post-sign-in return path
+   `/inspection` available.
+4. Configure the admin sign-in URL as
+   `https://delta-housing-admin.vercel.app/login`. The admin app does not offer
+   a separate admin sign-up route. A Clerk account or sign-up does not grant
+   administrator access; only IDs in the server allowlist can access protected
+   pages and API operations. Preserve requested return paths for protected
+   admin routes.
+5. Add both deployed origins as Clerk authorized origins/allowed origins where
+   that setting is available. If Clerk requires DNS verification for a custom
+   authentication domain, verify only a domain the organization controls;
+   the Vercel `vercel.app` hostnames are configured as application origins,
+   not as custom domains owned by Delta Housing.
+6. Use the same instance's matching `pk_live_` and `sk_live_` pair in both
+   Vercel projects and the Render service. Prefix validation detects test/live
+   mismatches but cannot prove that keys with the same prefix belong to the
+   same Clerk instance.
 
 ## Render: `apps/product-service`
 
@@ -60,20 +89,20 @@ Create a **Web Service** from the Git repository:
 Set these variables in Render → Environment. Secrets must be entered in the
 Render dashboard, never in source control.
 
-| Variable                    | Visibility                   | Required / notes                                                                                                                                          |
-| --------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`              | **Secret**                   | Required at build and runtime. Supabase PostgreSQL URI.                                                                                                   |
-| `DIRECT_URL`                | **Secret**                   | Recommended. Direct Supabase PostgreSQL URI; Prisma CLI prefers this when present.                                                                        |
-| `CLERK_SECRET_KEY`          | **Secret**                   | Required if using Clerk `verifyToken` with the secret key.                                                                                                |
-| `CLERK_JWT_KEY`             | **Secret**                   | Optional alternative to `CLERK_SECRET_KEY` for JWT verification. Configure one of these.                                                                  |
-| `CLERK_ADMIN_USER_IDS`      | **Secret**                   | Comma-separated trusted Clerk user IDs.                                                                                                                   |
-| `CLERK_AUTHORIZED_PARTIES`  | **Non-secret configuration** | Set to `https://delta-housing.vercel.app,https://delta-housing-admin.vercel.app`. These are the exact student and admin origins accepted in Clerk tokens. |
-| `CORS_ALLOWED_ORIGINS`      | **Non-secret configuration** | Set to `https://delta-housing.vercel.app,https://delta-housing-admin.vercel.app`. These exact browser origins must receive CORS headers.                  |
-| `SUPABASE_URL`              | **Non-secret configuration** | Supabase project URL used for Storage.                                                                                                                    |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Secret**                   | Server-only Supabase service-role or `sb_secret_` key. Never use a `NEXT_PUBLIC_` variable.                                                               |
-| `SUPABASE_STORAGE_BUCKET`   | **Non-secret configuration** | Optional; defaults to `listing-images`. Bucket must be public for image reads.                                                                            |
-| `PORT`                      | **Platform-provided**        | Render supplies this. The service listens on `process.env.PORT`, defaulting to 4000 locally.                                                              |
-| `NODE_ENV`                  | **Platform-provided**        | Render sets production mode; do not change it to development.                                                                                             |
+| Variable                    | Visibility                    | Required / notes                                                                                                                                                   |
+| --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`              | **Secret**                    | Required at build and runtime. Supabase PostgreSQL URI.                                                                                                            |
+| `DIRECT_URL`                | **Secret**                    | Recommended. Direct Supabase PostgreSQL URI; Prisma CLI prefers this when present.                                                                                 |
+| `CLERK_SECRET_KEY`          | **Secret**                    | Required in production. Must be the matching Clerk Production secret key (`sk_live_…`).                                                                            |
+| `CLERK_JWT_KEY`             | **Server-only configuration** | Optional PEM public key for networkless local/development verification. Production authentication uses `CLERK_SECRET_KEY`; this variable is ignored in production. |
+| `CLERK_ADMIN_USER_IDS`      | **Secret**                    | Comma-separated trusted Clerk user IDs.                                                                                                                            |
+| `CLERK_AUTHORIZED_PARTIES`  | **Non-secret configuration**  | Set to `https://delta-housing.vercel.app,https://delta-housing-admin.vercel.app`. These are the exact student and admin origins accepted in Clerk tokens.          |
+| `CORS_ALLOWED_ORIGINS`      | **Non-secret configuration**  | Set to `https://delta-housing.vercel.app,https://delta-housing-admin.vercel.app`. These exact browser origins must receive CORS headers.                           |
+| `SUPABASE_URL`              | **Non-secret configuration**  | Supabase project URL used for Storage.                                                                                                                             |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret**                    | Server-only Supabase service-role or `sb_secret_` key. Never use a `NEXT_PUBLIC_` variable.                                                                        |
+| `SUPABASE_STORAGE_BUCKET`   | **Non-secret configuration**  | Optional; defaults to `listing-images`. Bucket must be public for image reads.                                                                                     |
+| `PORT`                      | **Platform-provided**         | Render supplies this. The service listens on `process.env.PORT`, defaulting to 4000 locally.                                                                       |
+| `NODE_ENV`                  | **Platform-provided**         | Render sets production mode; do not change it to development.                                                                                                      |
 
 The service binds to `0.0.0.0`. Do not set `PORT` to a fixed value in the start
 command. The free web-service plan may spin down when idle; the first request
@@ -101,9 +130,9 @@ Create a separate Vercel project for the client:
 | Build Command                            | `pnpm --filter client build`                                            |
 | Output Directory                         | Leave the Next.js default                                               |
 
-Add these variables to Vercel → Project → Settings → Environment Variables for
-Production (and Preview only if Preview deployments are intentionally
-configured):
+Add these variables to Vercel → Project → Settings → Environment Variables
+for Production. Add them to Preview only when preview deployments have
+deliberately configured Clerk origins and API allowlists:
 
 | Variable                            | Visibility | Required / notes                                                                            |
 | ----------------------------------- | ---------- | ------------------------------------------------------------------------------------------- |
@@ -112,11 +141,13 @@ configured):
 | `CLERK_SECRET_KEY`                  | **Secret** | Matching production Clerk secret key (`sk_live_…`), not a development key.                  |
 
 Use the same production Clerk application/key pair in the admin and Render
-service. In Clerk Dashboard, configure the production instance for
-`delta-housing.vercel.app`, including its application domain, allowed origins,
-sign-in/sign-up URLs, and redirect URLs. Keep the student return path
-`/inspection` working after sign-in. The client middleware protects Inspection,
-Messages, and Profile; listing discovery/details remain public.
+service. `CLERK_SECRET_KEY` is required by the client app's server-side
+configuration guard; it is never exposed to browser code. The client
+middleware protects Inspection, Messages, and Profile; listing
+discovery/details remain public.
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is embedded into the frontend build, so
+changing it in Vercel requires a new Production deployment. The secret key is
+server-only and must never use a `NEXT_PUBLIC_` name.
 `NEXT_PUBLIC_API_URL` is intentionally public and is not a credential.
 
 The Next image configuration allows images from `**.supabase.co` under
@@ -138,23 +169,30 @@ Create a second, separate Vercel project:
 
 Add these Production environment variables:
 
-| Variable                            | Visibility | Required / notes                                                                                                                            |
-| ----------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | **Public** | Same production Clerk application used by the admin.                                                                                        |
-| `CLERK_SECRET_KEY`                  | **Secret** | Same production Clerk application; server-side only.                                                                                        |
-| `CLERK_ADMIN_USER_IDS`              | **Secret** | Trusted administrator Clerk user IDs; must match the product service allowlist.                                                             |
-| `PRODUCT_SERVICE_API_URL`           | **Secret** | Render product-service HTTPS origin. Server-to-server configuration, not a credential; keep server-only by not using a `NEXT_PUBLIC_` name. |
+| Variable                            | Visibility                    | Required / notes                                                                                                           |
+| ----------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | **Public**                    | Same production Clerk application used by the admin.                                                                       |
+| `CLERK_SECRET_KEY`                  | **Secret**                    | Same production Clerk application; server-side only.                                                                       |
+| `CLERK_ADMIN_USER_IDS`              | **Secret**                    | Trusted administrator Clerk user IDs; must match the product service allowlist.                                            |
+| `PRODUCT_SERVICE_API_URL`           | **Server-only configuration** | Render product-service HTTPS origin. This URL is not a credential; keep it server-only by not using a `NEXT_PUBLIC_` name. |
 
 Set the same production Clerk publishable/secret key pair as the client.
-Configure the Clerk production instance for
-`delta-housing-admin.vercel.app`, including its allowed origins and sign-in
-URLs. `CLERK_ADMIN_USER_IDS` must contain the trusted admin Clerk user ID(s);
-do not include student IDs.
+`CLERK_ADMIN_USER_IDS` must contain the trusted admin Clerk user ID(s); do
+not include student IDs. The admin frontend checks this list, and the product
+service independently verifies the token and checks the same allowlist.
 
 The Render API must list both frontend origins in both
 `CLERK_AUTHORIZED_PARTIES` and `CORS_ALLOWED_ORIGINS`. The API validates the
 signed Clerk token and administrator allowlist separately; CORS does not grant
 access or replace API-side authentication.
+
+The client apps select their Clerk instance from
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. In production, the client apps fail
+closed unless the publishable key is `pk_live_…`, the server key is matching
+mode `sk_live_…`, and the admin app has a non-empty administrator allowlist.
+The product service fails closed in production unless its `CLERK_SECRET_KEY`
+is `sk_live_…`. These checks validate key mode, not that keys are from the
+same Clerk instance; confirm the key pairing in Clerk Dashboard.
 
 ## Environment templates
 
@@ -193,7 +231,9 @@ meta }`. This also checks PostgreSQL connectivity.
    An unrelated origin must not receive `Access-Control-Allow-Origin`.
 
 4. Confirm both deployed frontends show Clerk production mode, not the
-   development-key warning. Sign in, refresh, and open a protected route.
+   development-key warning. A test key in Production should display a
+   configuration error and must not initialize a Clerk sign-in flow. Sign in,
+   refresh, and open a protected route.
 5. Open the Vercel client, browse a listing and its detail page, and verify an
    uploaded public Supabase image loads.
 6. Sign in to the Vercel admin as an allowlisted user; read and edit a listing.

@@ -273,24 +273,28 @@ async function sendMessage(
       ) {
         return { kind: "forbidden" as const };
       }
-      if (senderRole === "admin" && conversation.assignedAdminId === null) {
-        const claimed = await transaction.conversation.updateMany({
-          where: { id: conversationId, assignedAdminId: null },
-          data: { assignedAdminId: senderId },
-        });
-        if (claimed.count !== 1) return { kind: "forbidden" as const };
-      }
-
       const existing = await transaction.message.findUnique({
         where: {
           conversationId_clientMessageId: { conversationId, clientMessageId },
         },
       });
       if (existing) {
-        if (existing.senderId !== senderId || existing.body !== text) {
+        if (
+          existing.senderId !== senderId ||
+          existing.senderRole !== senderRole ||
+          existing.body !== text
+        ) {
           return { kind: "idempotency_conflict" as const };
         }
         return { kind: "duplicate" as const, data: existing };
+      }
+
+      if (senderRole === "admin" && conversation.assignedAdminId === null) {
+        const claimed = await transaction.conversation.updateMany({
+          where: { id: conversationId, assignedAdminId: null },
+          data: { assignedAdminId: senderId },
+        });
+        if (claimed.count !== 1) return { kind: "forbidden" as const };
       }
 
       const message = await transaction.message.create({
@@ -333,6 +337,7 @@ async function sendMessage(
       if (
         duplicate &&
         duplicate.senderId === senderId &&
+        duplicate.senderRole === senderRole &&
         duplicate.body === text
       ) {
         return reply.code(200).send({ data: duplicate, duplicate: true });

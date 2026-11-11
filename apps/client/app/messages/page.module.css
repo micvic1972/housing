@@ -1,16 +1,18 @@
 .page {
-  width: min(100%, 900px);
+  width: min(100%, 940px);
   margin: 0 auto;
-  padding: 24px 0 40px;
+  padding: 28px 20px 56px;
 }
 
 .header {
-  max-width: 700px;
-  margin-bottom: 20px;
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+  margin-bottom: 18px;
 }
 
 .eyebrow {
-  margin: 0 0 7px;
+  margin: 0;
   color: var(--primary-soft);
   font-size: 12px;
   font-weight: 750;
@@ -20,8 +22,8 @@
 
 .header h1 {
   margin: 0;
-  font-size: clamp(26px, 4vw, 38px);
-  line-height: 1.12;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.08;
   overflow-wrap: anywhere;
 }
 
@@ -29,21 +31,32 @@
 .empty > p,
 .state {
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .prototypeNotice {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 18px 0 22px;
+  margin: 8px 0 22px;
   padding: 13px 15px;
-  border: 1px solid var(--soft-line);
-  border-radius: 14px;
-  background: var(--primary-tint);
-  color: var(--text);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(16, 185, 129, 0.08));
+  color: #dfeefe;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.inbox {
+  display: grid;
+  gap: 18px;
+}
+
+.inbox h2 {
+  margin: 0;
+  font-size: 18px;
 }
 
 .empty,
@@ -54,6 +67,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
 }
 
 .empty {
@@ -67,25 +81,19 @@
   flex: none;
   place-items: center;
   color: var(--primary-soft);
-  background: var(--primary-tint);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.06));
 }
 
 .emptyIcon {
-  width: 54px;
-  height: 54px;
-  margin: 0 auto 14px;
-  border-radius: 17px;
-}
-
-.empty h2,
-.inbox h2 {
-  margin: 0;
-  font-size: 18px;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
 }
 
 .empty > p {
   max-width: 460px;
-  margin: 8px auto 16px;
+  margin: 10px auto 18px;
   font-size: 14px;
 }
 
@@ -96,34 +104,46 @@
   min-height: 42px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 0 14px;
+  gap: 8px;
+  padding: 0 15px;
   border: 1px solid var(--soft-line);
   border-radius: 12px;
-  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.06);
+  color: #dbeafe;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
+  transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
 }
 
-.inbox h2 {
-  margin-bottom: 10px;
+.empty > a:hover,
+.listingLink:hover,
+.backLink:hover {
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .thread {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-top: 1px solid var(--border-soft);
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
   color: var(--text);
   text-decoration: none;
-  transition: background-color 140ms ease;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.025);
 }
 
 .thread:hover {
-  background: var(--primary-tint);
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.35);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(15, 23, 42, 0));
 }
 
 .thread:focus-visible,
@@ -137,21 +157,17 @@
   outline-offset: 3px;
 }
 
-.thread:first-of-type {
-  border-top: 0;
-}
-
 .threadIcon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
 }
 
 .threadContent {
   display: grid;
   min-width: 0;
   flex: 1;
-  gap: 4px;
+  gap: 5px;
 }
 
 .threadContent strong,
@@ -162,7 +178,8 @@
 }
 
 .threadContent strong {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .threadContent > span,
@@ -180,11 +197,14 @@
 }
 
 .unreadBadge {
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 9px;
   border-radius: 999px;
   background: var(--primary);
   color: var(--on-primary);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -194,20 +214,21 @@
 
 .listingLink {
   min-height: 36px;
-  margin-top: 10px;
-  padding: 0 11px;
+  margin-top: 8px;
+  padding: 0 12px;
   font-size: 13px;
 }
 
 .transcript {
   display: grid;
-  min-height: 180px;
+  min-height: 200px;
   max-height: min(64vh, 680px);
   align-content: start;
   gap: 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-padding: 16px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.02), rgba(148, 163, 184, 0.02));
 }
 
 .transcriptEmpty {
@@ -219,10 +240,11 @@
 .message {
   max-width: min(86%, 620px);
   padding: 12px 14px;
-  border: 1px solid var(--soft-line);
-  border-radius: 15px 15px 4px 15px;
-  background: var(--primary-tint);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px 18px 7px 18px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
   overflow-wrap: anywhere;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.03);
 }
 
 .messageOwn {
@@ -231,13 +253,13 @@
 
 .messageOther {
   justify-self: start;
-  border-radius: 15px 15px 15px 4px;
-  background: var(--surface);
+  border-radius: 18px 18px 18px 7px;
+  background: rgba(15, 23, 42, 0.02);
 }
 
 .message p {
   margin: 0;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-wrap;
 }
 
@@ -251,7 +273,7 @@
 
 .message time {
   display: block;
-  margin-top: 7px;
+  margin-top: 8px;
   color: var(--text-muted);
   font-size: 11px;
 }
@@ -267,7 +289,7 @@
 .composer {
   display: grid;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .composer label {
@@ -278,16 +300,18 @@
 .composer textarea {
   width: 100%;
   resize: vertical;
-  padding: 11px 12px;
+  padding: 12px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg);
-  line-height: 1.45;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.02);
+  line-height: 1.5;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .composer textarea:focus-visible {
-  outline: 2px solid var(--primary-soft);
-  outline-offset: 2px;
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
 .composerFooter {
@@ -305,18 +329,20 @@
   min-height: 42px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 0 14px;
+  gap: 8px;
+  padding: 0 15px;
   border-radius: 12px;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), rgba(59, 130, 246, 0.82));
   color: var(--on-primary);
   font-size: 14px;
   font-weight: 700;
+  box-shadow: 0 10px 18px rgba(59, 130, 246, 0.2);
 }
 
 .composerFooter button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+  box-shadow: none;
 }
 
 .notice,
@@ -346,9 +372,14 @@
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+  box-shadow: none;
 }
 
 @media (max-width: 520px) {
+  .page {
+    padding-inline: 14px;
+  }
+
   .empty,
   .state,
   .transcript,
@@ -357,7 +388,8 @@
   }
 
   .thread {
-    gap: 9px;
+    gap: 10px;
+    padding: 13px;
   }
 
   .threadDate {

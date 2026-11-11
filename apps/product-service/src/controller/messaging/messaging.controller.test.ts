@@ -7,6 +7,7 @@ import {
   createStudentConversation,
   getAdminConversation,
   getStudentConversation,
+  listAdminConversations,
   listStudentConversations,
   sendAdminMessage,
   sendStudentMessage,
@@ -131,10 +132,22 @@ test("messaging is persisted and scoped to the student and assigned administrato
   Reflect.set(
     prisma.conversation,
     "findMany",
-    async ({ where }: { where: { studentId?: string } }) =>
+    async ({
+      where,
+    }: {
+      where: {
+        studentId?: string;
+        OR?: Array<{ assignedAdminId: string | null }>;
+      };
+    }) =>
       [...conversations.values()]
         .filter(
-          (item) => !where.studentId || item.studentId === where.studentId,
+          (item) =>
+            (!where.studentId || item.studentId === where.studentId) &&
+            (!where.OR ||
+              where.OR.some(
+                (condition) => item.assignedAdminId === condition.assignedAdminId,
+              )),
         )
         .map((item) => ({
           ...detail(item.id),
@@ -338,6 +351,26 @@ test("messaging is persisted and scoped to the student and assigned administrato
     assert.equal(crossStudent.statusCode, 403);
     assert.equal(messages.length, 1);
 
+    const conflictingAdminRetry = createReply();
+    await sendAdminMessage(
+      request(
+        "admin-a",
+        { body: "Different content", clientMessageId: "request-0001" },
+        firstId,
+      ) as never,
+      conflictingAdminRetry as never,
+    );
+    assert.equal(conflictingAdminRetry.statusCode, 409);
+    assert.equal(conversations.get(firstId)?.assignedAdminId, null);
+
+    const roleMismatchRetry = createReply();
+    await sendAdminMessage(
+      request("student-a", firstMessage, firstId) as never,
+      roleMismatchRetry as never,
+    );
+    assert.equal(roleMismatchRetry.statusCode, 409);
+    assert.equal(conversations.get(firstId)?.assignedAdminId, null);
+
     const reply = createReply();
     await sendAdminMessage(
       request(
@@ -349,6 +382,67 @@ test("messaging is persisted and scoped to the student and assigned administrato
     );
     assert.equal(reply.statusCode, 201);
     assert.equal(conversations.get(firstId)?.assignedAdminId, "admin-a");
+
+    const duplicateAdminReply = createReply();
+    await sendAdminMessage(
+      request(
+        "admin-a",
+        { body: "Yes, it is available.", clientMessageId: "admin-msg-0001" },
+        firstId,
+      ) as never,
+      duplicateAdminReply as never,
+    );
+    assert.equal(duplicateAdminReply.statusCode, 200);
+    assert.equal(
+      (duplicateAdminReply.payload as { duplicate: boolean }).duplicate,
+      true,
+    );
+
+    const studentInboxBeforeRead = createReply();
+    await listStudentConversations(
+      request("student-a") as never,
+      studentInboxBeforeRead as never,
+    );
+    const studentInboxBeforeReadData = (
+      studentInboxBeforeRead.payload as {
+        data: Array<{
+          id: string;
+          lastMessage: { body: string } | null;
+          unreadCount: number;
+        }>;
+      }
+    ).data;
+    assert.equal(
+      studentInboxBeforeReadData[0]?.lastMessage?.body,
+      "Yes, it is available.",
+    );
+    assert.equal(studentInboxBeforeReadData[0]?.unreadCount, 1);
+
+    const adminInboxBeforeRead = createReply();
+    await listAdminConversations(
+      request("admin-a") as never,
+      adminInboxBeforeRead as never,
+    );
+    const adminInboxBeforeReadData = (
+      adminInboxBeforeRead.payload as {
+        data: Array<{ id: string; unreadCount: number }>;
+      }
+    ).data;
+    assert.equal(
+      adminInboxBeforeReadData.find((item) => item.id === firstId)?.unreadCount,
+      1,
+    );
+
+    const otherAdminInbox = createReply();
+    await listAdminConversations(
+      request("admin-b") as never,
+      otherAdminInbox as never,
+    );
+    const otherAdminInboxData = (
+      otherAdminInbox.payload as { data: Array<{ id: string }> }
+    ).data;
+    assert.equal(otherAdminInboxData.some((item) => item.id === firstId), false);
+    assert.deepEqual(otherAdminInboxData.map((item) => item.id), [secondId]);
 
     const otherAdminReply = createReply();
     await sendAdminMessage(
@@ -368,6 +462,28 @@ test("messaging is persisted and scoped to the student and assigned administrato
     );
     assert.equal(studentThread.statusCode, 200);
     assert.ok(messages.find((item) => item.senderRole === "admin")?.readAt);
+    assert.equal(
+      messages.find((item) => item.senderRole === "student")?.readAt,
+      null,
+    );
+
+    const deniedStudentThread = createReply();
+    await getStudentConversation(
+      request("student-b", undefined, firstId) as never,
+      deniedStudentThread as never,
+    );
+    assert.equal(deniedStudentThread.statusCode, 404);
+
+    const studentInboxAfterRead = createReply();
+    await listStudentConversations(
+      request("student-a") as never,
+      studentInboxAfterRead as never,
+    );
+    assert.equal(
+      (studentInboxAfterRead.payload as { data: Array<{ unreadCount: number }> })
+        .data[0]?.unreadCount,
+      0,
+    );
 
     const adminThread = createReply();
     await getAdminConversation(
@@ -376,6 +492,27 @@ test("messaging is persisted and scoped to the student and assigned administrato
     );
     assert.equal(adminThread.statusCode, 200);
     assert.ok(messages.find((item) => item.senderRole === "student")?.readAt);
+
+    const adminInboxAfterRead = createReply();
+    await listAdminConversations(
+      request("admin-a") as never,
+      adminInboxAfterRead as never,
+    );
+    assert.equal(
+      (
+        adminInboxAfterRead.payload as {
+          data: Array<{ id: string; unreadCount: number }>;
+        }
+      ).data.find((item) => item.id === firstId)?.unreadCount,
+      0,
+    );
+
+    const deniedAdminThread = createReply();
+    await getAdminConversation(
+      request("admin-b", undefined, firstId) as never,
+      deniedAdminThread as never,
+    );
+    assert.equal(deniedAdminThread.statusCode, 404);
 
     const studentList = createReply();
     await listStudentConversations(
