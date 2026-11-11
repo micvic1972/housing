@@ -12,7 +12,10 @@ import { StudentActivityProvider } from "./lib/student-activity";
 import { MessagingProvider } from "./lib/messaging";
 import { InspectionRequestsProvider } from "./lib/inspection-requests";
 import { AppearanceProvider } from "./lib/appearance-provider";
-import { isClientClerkConfigured } from "./lib/clerk-config";
+import {
+  isClientClerkConfigured,
+  isLocalDemoModeEnabled,
+} from "./lib/clerk-config";
 
 const appearanceBootstrap = `(() => {
   try {
@@ -54,6 +57,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const clerkConfigured = isClientClerkConfigured();
+  const demoMode = isLocalDemoModeEnabled();
   const app = (
     <FiltersProvider>
       <ListingsProvider>
@@ -84,7 +88,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: appearanceBootstrap }}
         />
         <AppearanceProvider>
-          {clerkConfigured ? (
+          {demoMode ? (
+            app
+          ) : clerkConfigured ? (
             <ClerkProvider
               signInUrl="/sign-in"
               signUpUrl="/sign-up"

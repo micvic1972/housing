@@ -4,7 +4,10 @@ import {
   type NextFetchEvent,
   type NextRequest,
 } from "next/server";
-import { isClientClerkConfigured } from "./app/lib/clerk-config";
+import {
+  isClientClerkConfigured,
+  isLocalDemoModeEnabled,
+} from "./app/lib/clerk-config";
 
 const protectedPaths = ["/inspection", "/messages", "/profile"];
 
@@ -32,6 +35,10 @@ const clerkProxy = clerkMiddleware(async (auth, request) => {
 
 export default function proxy(request: NextRequest, event: NextFetchEvent) {
   if (!isProtectedPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
+  if (isLocalDemoModeEnabled()) {
     return NextResponse.next();
   }
 

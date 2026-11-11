@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "./app-auth";
 import {
   createContext,
   useCallback,
@@ -75,7 +75,7 @@ function readData<T>(body: unknown, fallback: string): T {
 }
 
 export function MessagingProvider({ children }: { children: ReactNode }) {
-  const { getToken, isLoaded, isSignedIn, userId } = useAuth();
+  const { getToken, isLoaded, isSignedIn, userId } = useAppAuth("student");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [ready, setReady] = useState(false);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);

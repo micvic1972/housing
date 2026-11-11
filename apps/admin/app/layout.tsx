@@ -18,7 +18,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { clerkAdminIsConfigured } from "@/lib/admin-authorization";
+import {
+  clerkAdminIsConfigured,
+  isLocalDemoModeEnabled,
+} from "@/lib/admin-authorization";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const clerkConfigured = clerkAdminIsConfigured();
+  const demoMode = isLocalDemoModeEnabled();
 
   return (
     <html
@@ -86,16 +90,36 @@ export default function RootLayout({
               </TooltipProvider>
             </ThemeProvider>
           </ClerkProvider>
+        ) : demoMode ? (
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <TooltipProvider>
+              <SidebarProvider>
+                <AppSidebar />
+                <SidebarInset className="min-w-0">
+                  <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
+                    <SidebarTrigger className="size-11 md:hidden" />
+                    <span className="text-sm font-medium">
+                      Delta Housing admin
+                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="rounded-md border bg-muted px-2.5 py-1 text-xs font-medium">
+                        Demo admin
+                      </span>
+                      <ThemeToggle />
+                    </div>
+                  </header>
+                  <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+                </SidebarInset>
+              </SidebarProvider>
+            </TooltipProvider>
+          </ThemeProvider>
         ) : (
           <main className="mx-auto flex min-h-screen max-w-xl items-center p-6">
             <section className="space-y-3 rounded-xl border bg-card p-6">
-              <h1 className="text-xl font-semibold">
-                Admin sign-in unavailable
-              </h1>
+              <h1 className="text-xl font-semibold">Admin sign-in unavailable</h1>
               <p className="text-sm text-muted-foreground" role="alert">
-                Configure a matching Clerk key pair and trusted administrator
-                IDs for this environment. Production must use Clerk Production
-                keys.
+                Configure a matching Clerk key pair and trusted administrator IDs
+                for this environment. Production must use Clerk Production keys.
               </p>
             </section>
           </main>

@@ -1,25 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
-import { isClerkKeyPairAllowed } from "./clerk-config";
+import {
+  clerkAdminIsConfigured,
+  isAdminUser,
+  isLocalDemoModeEnabled,
+} from "./admin-runtime";
 
-export function clerkAdminIsConfigured(): boolean {
-  return Boolean(
-    isClerkKeyPairAllowed(
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-      process.env.CLERK_SECRET_KEY,
-    ) && configuredAdminIds().length > 0,
-  );
-}
-
-export function isAdminUser(userId: string): boolean {
-  return configuredAdminIds().includes(userId);
-}
-
-function configuredAdminIds(): string[] {
-  return (process.env.CLERK_ADMIN_USER_IDS ?? "")
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
-}
+export {
+  clerkAdminIsConfigured,
+  isAdminUser,
+  isLocalDemoModeEnabled,
+} from "./admin-runtime";
 
 export async function getAdminBearerToken(): Promise<
   | { status: "ready"; token: string }
@@ -28,6 +18,10 @@ export async function getAdminBearerToken(): Promise<
   | { status: "misconfigured" }
 > {
   if (!clerkAdminIsConfigured()) return { status: "misconfigured" };
+
+  if (isLocalDemoModeEnabled()) {
+    return { status: "ready", token: "demo:admin:demo-admin" };
+  }
 
   const { userId, getToken } = await auth();
   if (!userId) return { status: "unauthenticated" };

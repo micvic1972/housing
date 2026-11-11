@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "../lib/app-auth";
 import {
   useCallback,
   useEffect,
@@ -50,7 +50,7 @@ function formatDate(value: string) {
 }
 
 export default function MessagesInbox() {
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAppAuth("admin");
   const [conversations, setConversations] = useState<AdminConversation[]>([]);
   const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

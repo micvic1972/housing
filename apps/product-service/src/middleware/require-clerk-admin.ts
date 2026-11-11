@@ -2,12 +2,37 @@ import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type {} from "./require-clerk-user.js";
 import { resolveClerkAuthorizedParties } from "../lib/cors-config.js";
-import { getClerkVerificationKeys } from "../lib/clerk-config.js";
+import {
+  getClerkVerificationKeys,
+  getDemoTokenRoleAndUser,
+  isLocalDemoModeEnabled,
+} from "../lib/clerk-config.js";
 
 export async function requireClerkAdmin(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  const authorization = request.headers.authorization;
+  if (
+    typeof authorization === "string" &&
+    authorization.startsWith("Bearer demo:")
+  ) {
+    const demo = getDemoTokenRoleAndUser(authorization);
+    if (demo?.role === "admin") {
+      request.clerkUserId = demo.userId;
+      return;
+    }
+    if (demo?.role === "student") {
+      return reply.code(403).send({ error: "Administrator access required" });
+    }
+  }
+
+  if (isLocalDemoModeEnabled()) {
+    return reply.code(503).send({
+      error: "Local demo mode requires a demo admin token.",
+    });
+  }
+
   const verificationKeys = getClerkVerificationKeys();
   const adminIds = (process.env.CLERK_ADMIN_USER_IDS ?? "")
     .split(",")
@@ -36,7 +61,6 @@ export async function requireClerkAdmin(
     });
   }
 
-  const authorization = request.headers.authorization;
   if (
     typeof authorization !== "string" ||
     !authorization.startsWith("Bearer ")

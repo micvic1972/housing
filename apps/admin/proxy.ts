@@ -1,6 +1,10 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
-import { clerkAdminIsConfigured, isAdminUser } from "./lib/admin-authorization";
+import {
+  clerkAdminIsConfigured,
+  isAdminUser,
+  isLocalDemoModeEnabled,
+} from "./lib/admin-authorization";
 
 const clerkProxy = clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
@@ -40,6 +44,10 @@ const clerkProxy = clerkMiddleware(async (auth, request) => {
 });
 
 export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (isLocalDemoModeEnabled()) {
+    return NextResponse.next();
+  }
+
   if (!clerkAdminIsConfigured()) {
     if (request.nextUrl.pathname === "/login") {
       return NextResponse.next();

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { SignIn, SignUp } from "@clerk/nextjs";
-import { isClientClerkConfigured } from "../../lib/clerk-config";
+import {
+  isClientClerkConfigured,
+  isLocalDemoModeEnabled,
+} from "../../lib/clerk-config";
 import styles from "./AuthPage.module.css";
 
 interface AuthPageProps {
@@ -9,6 +12,7 @@ interface AuthPageProps {
 
 export default function AuthPage({ mode }: AuthPageProps) {
   const configured = isClientClerkConfigured();
+  const demoMode = isLocalDemoModeEnabled();
   const isSignIn = mode === "sign-in";
 
   return (
@@ -26,7 +30,15 @@ export default function AuthPage({ mode }: AuthPageProps) {
             : "Create an account to use inspections, messages, and your profile."}
         </p>
 
-        {!configured ? (
+        {demoMode ? (
+          <div className={styles.setup} role="status">
+            <strong>Local demo mode is active.</strong>
+            <span>
+              This environment is using the built-in sample student account so the
+              product can be exercised without production Clerk credentials.
+            </span>
+          </div>
+        ) : !configured ? (
           <div className={styles.setup} role="status">
             <strong>Sign-in is not configured for this app.</strong>
             <span>

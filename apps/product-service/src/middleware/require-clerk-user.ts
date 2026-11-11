@@ -1,7 +1,11 @@
 import { verifyToken } from "@clerk/backend";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { resolveClerkAuthorizedParties } from "../lib/cors-config.js";
-import { getClerkVerificationKeys } from "../lib/clerk-config.js";
+import {
+  getClerkVerificationKeys,
+  getDemoTokenRoleAndUser,
+  isLocalDemoModeEnabled,
+} from "../lib/clerk-config.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -13,6 +17,27 @@ export async function requireClerkUser(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  const authorization = request.headers.authorization;
+  if (
+    typeof authorization === "string" &&
+    authorization.startsWith("Bearer demo:")
+  ) {
+    const demo = getDemoTokenRoleAndUser(authorization);
+    if (demo?.role === "student") {
+      request.clerkUserId = demo.userId;
+      return;
+    }
+    if (demo?.role === "admin") {
+      return reply.code(403).send({ error: "Student access required" });
+    }
+  }
+
+  if (isLocalDemoModeEnabled()) {
+    return reply.code(503).send({
+      error: "Local demo mode requires a demo student token.",
+    });
+  }
+
   const verificationKeys = getClerkVerificationKeys();
   let authorizedParties: string[];
   try {
@@ -33,7 +58,6 @@ export async function requireClerkUser(
     });
   }
 
-  const authorization = request.headers.authorization;
   if (
     typeof authorization !== "string" ||
     !authorization.startsWith("Bearer ")

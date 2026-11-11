@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "../lib/app-auth";
 import {
   FormEvent,
   useCallback,
@@ -48,7 +48,7 @@ export default function ConversationView({
 }: {
   conversationId: string;
 }) {
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAppAuth("admin");
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");

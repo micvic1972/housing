@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "../../lib/app-auth";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import {
@@ -15,7 +15,7 @@ import styles from "../page.module.css";
 
 export default function ConversationPage() {
   const params = useParams<{ conversationId: string }>();
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAppAuth("student");
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);

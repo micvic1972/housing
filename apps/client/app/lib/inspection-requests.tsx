@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "./app-auth";
 import {
   createContext,
   useCallback,
@@ -88,7 +88,7 @@ function AuthenticatedInspectionRequests({
 }: {
   children: ReactNode;
 }) {
-  const { getToken, isLoaded, isSignedIn, userId } = useAuth();
+  const { getToken, isLoaded, isSignedIn, userId } = useAppAuth("student");
   const [requests, setRequests] = useState<InspectionRequest[]>([]);
   const [loadedForUser, setLoadedForUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

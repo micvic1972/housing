@@ -10,9 +10,22 @@ export function isClerkKeyPairAllowed(
   return nodeEnv !== "production" || publishableMode === "live";
 }
 
+export function isLocalDemoModeEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    (process.env.NEXT_PUBLIC_DEMO_MODE === "true" ||
+      !isClerkKeyPairAllowed(
+        process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+        process.env.CLERK_SECRET_KEY,
+      ))
+  );
+}
+
 export function isClientClerkConfigured(): boolean {
-  return isClerkKeyPairAllowed(
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    process.env.CLERK_SECRET_KEY,
+  return (
+    isClerkKeyPairAllowed(
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      process.env.CLERK_SECRET_KEY,
+    ) || isLocalDemoModeEnabled()
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "./app-auth";
 import {
   createContext,
   useCallback,
@@ -59,7 +59,7 @@ function getSavedIdsFromResponse(body: unknown): Set<string> {
 }
 
 export function SavedListingsProvider({ children }: { children: ReactNode }) {
-  const { getToken, isLoaded, isSignedIn, userId } = useAuth();
+  const { getToken, isLoaded, isSignedIn, userId } = useAppAuth("student");
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
   const [ready, setReady] = useState(false);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
